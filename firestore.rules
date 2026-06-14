@@ -1,0 +1,47 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OnlyLogic — working rules (deploy this one now).
+//
+//   firebase deploy --only firestore:rules
+//   …or paste into Firebase console → Firestore → Rules → Publish.
+//
+// Access control for the back office is enforced in the app via roles. These
+// rules keep the data safe at the boundary (only signed-in users, public site
+// limited to creating bookings + reading products) while letting the first
+// admin bootstrap without a chicken-and-egg lockout.
+//
+// Once you've signed in once (your admin account is created) AND added your
+// team, you can switch to the stricter, role-aware rules in
+// `firestore.rules.strict` for server-side per-module enforcement.
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    // Marketing site: the lead form creates bookings; the storefront reads products.
+    match /bookings/{id} {
+      allow create: if true;
+      allow read, update, delete: if signedIn();
+    }
+    match /products/{id} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+
+    // Back-office collections — any signed-in account; the app's roles decide
+    // what each member actually sees and can change.
+    match /clients/{id}   { allow read, write: if signedIn(); }
+    match /settings/{id}  { allow read, write: if signedIn(); }
+    match /roles/{id}     { allow read, write: if signedIn(); }
+    match /members/{id}   { allow read, write: if signedIn(); }
+
+    match /auditLogs/{id} {
+      allow create: if signedIn();
+      allow read:   if signedIn();
+      allow update, delete: if false; // audit trail is append-only
+    }
+  }
+}

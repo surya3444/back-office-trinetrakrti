@@ -1,0 +1,77 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OnlyLogic — STRICT role-aware rules (deploy LATER).
+//
+// Deploy this only AFTER:
+//   1. you've signed in once with `firestore.rules` active (your Administrator
+//      member + role are created), and
+//   2. you've added your team on the Members screen.
+//
+// To use it:  rename this file to firestore.rules, then
+//   firebase deploy --only firestore:rules
+//
+// It mirrors the in-app RBAC so each module's read/write is enforced server-side.
+// If you ever delete all members, revert to the simple `firestore.rules` to
+// bootstrap a new admin again.
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function memberDoc() { return get(/databases/$(database)/documents/members/$(request.auth.uid)).data; }
+    function isActiveMember() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/members/$(request.auth.uid))
+        && memberDoc().disabled != true;
+    }
+    function roleDoc() { return get(/databases/$(database)/documents/roles/$(memberDoc().roleId)).data; }
+    function isAdmin() {
+      return isActiveMember() && memberDoc().roleId != null && roleDoc().isAdmin == true;
+    }
+    function canRead(m) {
+      return isAdmin() || (isActiveMember() && memberDoc().roleId != null && roleDoc().permissions[m].read == true);
+    }
+    function canWrite(m) {
+      return isAdmin() || (isActiveMember() && memberDoc().roleId != null && roleDoc().permissions[m].write == true);
+    }
+    function canReadLeads()  { return canRead('leads')  || canRead('pipeline')  || canRead('followups')  || canRead('dashboard'); }
+    function canWriteLeads() { return canWrite('leads') || canWrite('pipeline') || canWrite('followups'); }
+
+    match /bookings/{id} {
+      allow create: if true;                      // public lead form
+      allow read:   if canReadLeads();
+      allow update, delete: if canWriteLeads();
+    }
+    match /clients/{id} {
+      allow read:  if canRead('crm');
+      allow write: if canWrite('crm');
+    }
+    match /products/{id} {
+      allow read:  if true;                        // public storefront
+      allow write: if canWrite('products');
+    }
+    match /settings/{id} {
+      allow read:  if isActiveMember();
+      allow write: if canWrite('settings');
+    }
+
+    match /roles/{id} {
+      allow read:  if isActiveMember();            // app resolves its own permissions
+      allow write: if isAdmin();
+    }
+    match /members/{id} {
+      // Reading your OWN member doc must always be allowed (even before it
+      // exists) so the app can load; admins can read everyone.
+      allow read:  if signedIn() && (id == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /auditLogs/{id} {
+      allow create: if isActiveMember();
+      allow read:   if isAdmin();
+      allow update, delete: if false;
+    }
+  }
+}
