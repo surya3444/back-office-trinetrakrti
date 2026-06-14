@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, getDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { leadNote } from "../lib/leads";
 import { LayoutDashboard, Search, Inbox, Layers, CalendarClock, UserCheck, Archive, RotateCcw, X, StickyNote, Phone, Mail } from "lucide-react";
 import type { PipelineStage } from "./Settings";
 import { Loader, EmptyState } from "../components/ui";
@@ -313,7 +314,7 @@ export default function Dashboard() {
           initialNote={pending.lead.followUpNote || ""}
           onCancel={() => setPending(null)}
           onConfirm={async (date, note) => {
-            const payload: Record<string, unknown> = { followUpDate: date, followUpNote: note };
+            const payload: Record<string, unknown> = { followUpDate: date, followUpNote: note, notes: arrayUnion(leadNote("followup", { stage: pending.stage, date, text: note })) };
             if (pending.applyStatus) payload.status = pending.stage;
             try {
               await updateDoc(doc(db, "bookings", pending.lead.id), payload);

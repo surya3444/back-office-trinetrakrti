@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, getDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { leadNote } from "../lib/leads";
+import { NotePromptModal } from "../components/NotePromptModal";
 import { CalendarClock, ChevronLeft, ChevronRight, Check, Phone, Mail, Building2, CalendarDays, StickyNote } from "lucide-react";
 import type { PipelineStage } from "./Settings";
 import { PageHeader, Loader, EmptyState } from "../components/ui";
@@ -33,6 +35,7 @@ export default function FollowUps() {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [reschedule, setReschedule] = useState<Lead | null>(null);
+  const [completing, setCompleting] = useState<Lead | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"));
@@ -78,7 +81,7 @@ export default function FollowUps() {
 
   const moveToDate = async (leadId: string, date: string, note?: string) => {
     try {
-      const payload: Record<string, unknown> = { followUpDate: date };
+      const payload: Record<string, unknown> = { followUpDate: date, notes: arrayUnion(leadNote("followup", { date, text: note || "" })) };
       if (note !== undefined) payload.followUpNote = note;
       await updateDoc(doc(db, "bookings", leadId), payload);
       const lead = leads.find((l) => l.id === leadId);
@@ -86,11 +89,14 @@ export default function FollowUps() {
     } catch (e) { console.error(e); }
   };
 
-  const markDone = async (leadId: string) => {
+  // Completing a follow-up captures the outcome and clears the reminder.
+  const completeFollowUp = async (lead: Lead, outcome: string) => {
     try {
-      await updateDoc(doc(db, "bookings", leadId), { followUpDate: null });
-      const lead = leads.find((l) => l.id === leadId);
-      await logAction("Completed follow-up", lead?.name || "Lead", leadId);
+      await updateDoc(doc(db, "bookings", lead.id), {
+        followUpDate: null,
+        notes: arrayUnion(leadNote("done", { text: outcome, date: lead.followUpDate || "" })),
+      });
+      await logAction("Completed follow-up", `${lead.name}${outcome ? ` — “${outcome}”` : ""}`, lead.id);
     } catch (e) { console.error(e); }
   };
 
@@ -233,7 +239,7 @@ export default function FollowUps() {
                     {canWrite && (
                       <div className="flex gap-2">
                         <button onClick={() => setReschedule(lead)} className="text-[13px] font-semibold text-[#2B41E0] bg-[#EDEFFF] px-3 py-2 rounded-lg hover:bg-[#2B41E0] hover:text-white transition-colors">Reschedule</button>
-                        <button onClick={() => markDone(lead.id)} className="text-[13px] font-semibold text-[#0F9D6B] bg-[#E6F6EF] px-3 py-2 rounded-lg hover:bg-[#0F9D6B] hover:text-white transition-colors flex items-center gap-1.5"><Check size={14} /> Done</button>
+                        <button onClick={() => setCompleting(lead)} className="text-[13px] font-semibold text-[#0F9D6B] bg-[#E6F6EF] px-3 py-2 rounded-lg hover:bg-[#0F9D6B] hover:text-white transition-colors flex items-center gap-1.5"><Check size={14} /> Done</button>
                       </div>
                     )}
                   </div>
@@ -247,6 +253,19 @@ export default function FollowUps() {
           </div>
         </div>
       </div>
+
+      {/* Complete follow-up — capture the outcome */}
+      {completing && (
+        <NotePromptModal
+          title="Complete follow-up"
+          subtitle={`How did it go with ${completing.name}?`}
+          label="Outcome / notes"
+          placeholder="e.g. Spoke with them — sending a proposal next week."
+          confirmLabel="Mark complete"
+          onCancel={() => setCompleting(null)}
+          onConfirm={async (outcome) => { await completeFollowUp(completing, outcome); setCompleting(null); }}
+        />
+      )}
 
       {/* Reschedule modal (shared — captures date + remarks) */}
       {reschedule && (

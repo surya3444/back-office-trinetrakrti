@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, serverTimestamp, getDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { UserCheck, CalendarClock, Layers, X, Plus, StickyNote, Building2, Phone, UserPlus } from "lucide-react";
 import type { PipelineStage } from "./Settings";
 import { PageHeader, Loader, EmptyState } from "../components/ui";
 import { FollowUpModal } from "../components/FollowUpModal";
+import { StageNoteModal } from "../components/StageNoteModal";
 import { LeadDrawer } from "../components/LeadDrawer";
-import { advanceLeadStatus } from "../lib/leads";
+import { advanceLeadStatus, leadNote } from "../lib/leads";
 import { logAction } from "../lib/audit";
 import { useAuth } from "../lib/auth-context";
 import { todayStr, addDaysStr, relativeDay, isOverdue } from "../lib/dates";
@@ -22,6 +23,8 @@ export default function LeadPipeline() {
 
   // Pending follow-up: a lead dropped into a follow-up stage, awaiting a date/remarks.
   const [followUp, setFollowUp] = useState<{ leadId: string; stage: string } | null>(null);
+  // Pending move: a lead dropped into a regular stage, awaiting an optional note.
+  const [stageMove, setStageMove] = useState<{ leadId: string; stage: string } | null>(null);
 
   // Manual lead creation
   const [showAdd, setShowAdd] = useState(false);
@@ -80,9 +83,8 @@ export default function LeadPipeline() {
       return;
     }
 
-    try {
-      await advanceLeadStatus(lead, targetStage, stages);
-    } catch (error) { console.error(error); }
+    // Any other stage move asks for an optional stage note.
+    setStageMove({ leadId, stage: targetStage });
   };
 
   const handleAddLead = async (e: React.FormEvent) => {
@@ -202,8 +204,15 @@ export default function LeadPipeline() {
                         </div>
                       )}
 
-                      <div className="mt-2.5 pt-2.5 border-t border-[#F0EEE7] flex items-center gap-1.5 text-[11px] text-[#9AA0AD]">
-                        <UserPlus size={11} /> Added by <span className="font-medium text-[#6B7283]">{creator}</span>
+                      {!stageObj.isFollowUp && lead.lastStageNote && (
+                        <div className="mt-2.5 flex gap-1.5 text-[12px] text-[#5b6472] bg-[#F4F2EC] rounded-md px-2 py-1.5 leading-relaxed">
+                          <StickyNote size={12} className="shrink-0 mt-0.5 text-[#9AA0AD]" /> <span className="line-clamp-2">{lead.lastStageNote}</span>
+                        </div>
+                      )}
+
+                      <div className="mt-2.5 pt-2.5 border-t border-[#F0EEE7] flex items-center justify-between gap-2 text-[11px] text-[#9AA0AD]">
+                        <span className="flex items-center gap-1.5 truncate"><UserPlus size={11} /> Added by <span className="font-medium text-[#6B7283]">{creator}</span></span>
+                        {lead.notes?.length ? <span className="flex items-center gap-1 shrink-0 font-medium text-[#6B7283]"><StickyNote size={11} /> {lead.notes.length}</span> : null}
                       </div>
                     </div>
                   );
@@ -226,6 +235,24 @@ export default function LeadPipeline() {
         </div>
       )}
 
+      {/* Stage move + optional note prompt */}
+      {stageMove && (() => {
+        const lead = leads.find((l) => l.id === stageMove.leadId);
+        if (!lead) return null;
+        return (
+          <StageNoteModal
+            leadName={lead.name}
+            stageName={stageMove.stage}
+            color={stages.find((s) => s.name === stageMove.stage)?.color}
+            onCancel={() => setStageMove(null)}
+            onConfirm={async (note) => {
+              try { await advanceLeadStatus(lead, stageMove.stage, stages, note); } catch (error) { console.error(error); }
+              setStageMove(null);
+            }}
+          />
+        );
+      })()}
+
       {/* Follow-up date + remarks prompt */}
       {followUp && (
         <FollowUpModal
@@ -236,8 +263,8 @@ export default function LeadPipeline() {
           onCancel={() => setFollowUp(null)}
           onConfirm={async (date, note) => {
             try {
-              await updateDoc(doc(db, "bookings", followUp.leadId), { status: followUp.stage, followUpDate: date, followUpNote: note });
-              await logAction("Scheduled follow-up", `${followUpLead?.name || "Lead"} on ${date}`, followUp.leadId);
+              await updateDoc(doc(db, "bookings", followUp.leadId), { status: followUp.stage, followUpDate: date, followUpNote: note, notes: arrayUnion(leadNote("followup", { stage: followUp.stage, date, text: note })) });
+              await logAction("Scheduled follow-up", `${followUpLead?.name || "Lead"} on ${date}${note ? ` — “${note}”` : ""}`, followUp.leadId);
             } catch (error) { console.error(error); }
             setFollowUp(null);
           }}

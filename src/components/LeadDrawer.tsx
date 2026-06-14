@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where, doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { X, Save, CalendarClock, Archive, RotateCcw, Mail, Phone, Building2, User, StickyNote, Clock, Info } from "lucide-react";
+import { X, Save, CalendarClock, Archive, RotateCcw, Mail, Phone, Building2, User, StickyNote, Clock, Info, CheckCircle2, ArrowRightCircle, Pencil } from "lucide-react";
 import type { PipelineStage } from "../pages/Settings";
 import { FollowUpModal } from "./FollowUpModal";
-import { advanceLeadStatus } from "../lib/leads";
+import { StageNoteModal } from "./StageNoteModal";
+import { NotePromptModal } from "./NotePromptModal";
+import { advanceLeadStatus, leadNote, type LeadNote } from "../lib/leads";
 import { logAction } from "../lib/audit";
 import { relativeDay, isOverdue } from "../lib/dates";
 
@@ -22,6 +24,8 @@ export interface DrawerLead {
   createdByName?: string;
   followUpDate?: string | null;
   followUpNote?: string;
+  lastStageNote?: string | null;
+  notes?: LeadNote[];
   convertedToClient?: boolean;
   createdAt?: any;
 }
@@ -37,13 +41,27 @@ function timeAgo(ts: any): string {
   } catch { return ""; }
 }
 
+function noteMeta(n: LeadNote): { icon: any; color: string; label: string } {
+  switch (n.type) {
+    case "stage": return { icon: ArrowRightCircle, color: "#2B41E0", label: n.stage ? `moved to ${n.stage}` : "moved stage" };
+    case "followup": return { icon: CalendarClock, color: "#B7791F", label: n.date ? `set a follow-up for ${relativeDay(n.date).toLowerCase()}` : "set a follow-up" };
+    case "done": return { icon: CheckCircle2, color: "#0F9D6B", label: "completed the follow-up" };
+    case "edit": return { icon: Pencil, color: "#9AA0AD", label: "edited the details" };
+    default: return { icon: Clock, color: "#9AA0AD", label: String(n.type) };
+  }
+}
+
 export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLead; stages: PipelineStage[]; canWrite: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<"details" | "activity">("details");
   const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", callType: "clarity", problem: "" });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [logs, setLogs] = useState<any[]>([]);
   const [pendingFU, setPendingFU] = useState<{ stage: string; applyStatus: boolean } | null>(null);
+  const [pendingMove, setPendingMove] = useState<string | null>(null);
+  const [completing, setCompleting] = useState(false);
+
+  // Timeline of stage notes & follow-ups, newest first (lives on the lead doc).
+  const timeline = [...(lead.notes || [])].sort((a, b) => (b.at || 0) - (a.at || 0));
 
   const stageColor = (s: string) => stages.find((x) => x.name === s)?.color || "#6B7283";
   const stageNames = new Set(stages.map((s) => s.name));
@@ -60,23 +78,13 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
     setSaved(false); setTab("details");
   }, [lead.id]);
 
-  // Live per-lead activity timeline.
-  useEffect(() => {
-    const q = query(collection(db, "auditLogs"), where("targetId", "==", lead.id));
-    const unsub = onSnapshot(q, (snap) => {
-      const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-      rows.sort((a, b) => (b.at?.toMillis?.() || 0) - (a.at?.toMillis?.() || 0));
-      setLogs(rows);
-    }, () => setLogs([]));
-    return () => unsub();
-  }, [lead.id]);
-
   const saveDetails = async () => {
     setSaving(true);
     try {
       await updateDoc(doc(db, "bookings", lead.id), {
         name: form.name, company: form.company || "N/A", email: form.email,
         phone: form.phone || "N/A", callType: form.callType, problem: form.problem,
+        notes: arrayUnion(leadNote("edit", { text: "Updated lead details" })),
       });
       await logAction("Edited lead details", form.name, lead.id);
       setSaved(true); setTimeout(() => setSaved(false), 2200);
@@ -84,11 +92,22 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
     finally { setSaving(false); }
   };
 
+  const completeFollowUp = async (outcome: string) => {
+    try {
+      await updateDoc(doc(db, "bookings", lead.id), {
+        followUpDate: null,
+        notes: arrayUnion(leadNote("done", { text: outcome, date: lead.followUpDate || "" })),
+      });
+      await logAction("Completed follow-up", `${lead.name}${outcome ? ` — “${outcome}”` : ""}`, lead.id);
+    } catch (e) { console.error(e); }
+    setCompleting(false);
+  };
+
   const onStageChange = (value: string) => {
     if (value === lead.status) return;
     if (value === "Archived") { updateDoc(doc(db, "bookings", lead.id), { status: "Archived" }).then(() => logAction("Archived lead", lead.name, lead.id)).catch(console.error); return; }
     if (stages.find((s) => s.name === value)?.isFollowUp) { setPendingFU({ stage: value, applyStatus: true }); return; }
-    advanceLeadStatus(lead, value, stages).catch(console.error);
+    setPendingMove(value);
   };
 
   const restore = () => updateDoc(doc(db, "bookings", lead.id), { status: stages[0]?.name || "new" }).then(() => logAction("Restored lead", lead.name, lead.id)).catch(console.error);
@@ -123,7 +142,7 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
           <div className="flex gap-1 mt-5 -mb-4 bg-[#F4F2EC] p-1 rounded-xl w-fit">
             {(["details", "activity"] as const).map((t) => (
               <button key={t} onClick={() => setTab(t)} className={`px-4 py-1.5 rounded-lg text-[13px] font-semibold capitalize transition-colors ${tab === t ? "bg-white text-[#13182B] shadow-sm" : "text-[#6B7283] hover:text-[#13182B]"}`}>
-                {t === "activity" ? `Activity${logs.length ? ` (${logs.length})` : ""}` : "Details"}
+                {t === "activity" ? `Timeline${timeline.length ? ` (${timeline.length})` : ""}` : "Details"}
               </button>
             ))}
           </div>
@@ -154,9 +173,23 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
               {lead.followUpDate && (
                 <div className="flex items-start gap-3 bg-[#FFF6E5] border border-[#F59E0B]/30 rounded-xl p-3.5">
                   <CalendarClock size={18} className="text-[#B7791F] shrink-0 mt-0.5" />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className={`font-semibold text-[13.5px] ${isOverdue(lead.followUpDate) ? "text-[#FF5C49]" : "text-[#13182B]"}`}>Follow-up {relativeDay(lead.followUpDate).toLowerCase()}</div>
                     {lead.followUpNote && <div className="text-[13px] text-[#8a6420] mt-1 flex gap-1.5"><StickyNote size={13} className="shrink-0 mt-0.5" /> {lead.followUpNote}</div>}
+                  </div>
+                  {canWrite && (
+                    <button onClick={() => setCompleting(true)} className="shrink-0 flex items-center gap-1.5 text-[12.5px] font-semibold text-[#0F9D6B] bg-white border border-[#0F9D6B]/30 px-2.5 py-1.5 rounded-lg hover:bg-[#0F9D6B] hover:text-white transition-colors"><CheckCircle2 size={14} /> Done</button>
+                  )}
+                </div>
+              )}
+
+              {/* Latest stage note */}
+              {lead.lastStageNote && (
+                <div className="flex items-start gap-3 bg-[#F4F2EC] border border-[#E5E2D9] rounded-xl p-3.5">
+                  <StickyNote size={17} className="text-[#9AA0AD] shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <div className="font-mono text-[10.5px] text-[#9AA0AD] uppercase tracking-wider">Latest note</div>
+                    <div className="text-[13.5px] text-[#3A4257] mt-0.5 leading-relaxed">{lead.lastStageNote}</div>
                   </div>
                 </div>
               )}
@@ -188,27 +221,32 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
             </div>
           ) : (
             <div>
-              <div className="flex items-start gap-2 bg-[#EDEFFF] text-[#3a4a9e] rounded-xl px-3.5 py-2.5 text-[12.5px] mb-4">
-                <Info size={15} className="shrink-0 mt-0.5" /> Actions taken before per-lead tracking was added won't appear here.
-              </div>
-              {logs.length === 0 ? (
+              {timeline.length === 0 ? (
                 <div className="text-center py-14 text-[#9AA0AD]">
                   <Clock size={28} className="mx-auto mb-3 opacity-50" />
-                  <p className="text-[14px] font-medium text-[#6B7283]">No activity yet</p>
-                  <p className="text-[13px]">Changes to this lead will show up here.</p>
+                  <p className="text-[14px] font-medium text-[#6B7283]">No notes yet</p>
+                  <p className="text-[13px]">Stage notes & follow-ups will appear here.</p>
                 </div>
               ) : (
-                <ul className="relative pl-2">
-                  {logs.map((l, i) => (
-                    <li key={l.id} className="relative pl-6 pb-5 last:pb-0">
-                      {i < logs.length - 1 && <span className="absolute left-[5px] top-3 bottom-0 w-px bg-[#E5E2D9]" />}
-                      <span className="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full bg-white border-2 border-[#2B41E0]" />
-                      <div className="text-[14px] text-[#13182B] leading-snug"><span className="font-semibold">{l.actorName || "Someone"}</span> <span className="text-[#3A4257]">{(l.action || "").toLowerCase()}</span></div>
-                      {l.details && <div className="text-[13px] text-[#6B7283] mt-0.5">{l.details}</div>}
-                      <div className="font-mono text-[11px] text-[#9AA0AD] mt-1">{timeAgo(l.at)}</div>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <div className="flex items-start gap-2 bg-[#EDEFFF] text-[#3a4a9e] rounded-xl px-3.5 py-2.5 text-[12.5px] mb-4">
+                    <Info size={15} className="shrink-0 mt-0.5" /> Notes & follow-ups recorded before this feature won't appear here.
+                  </div>
+                  <ul className="relative">
+                    {timeline.map((n, i) => {
+                      const meta = noteMeta(n);
+                      return (
+                        <li key={i} className="relative pl-7 pb-5 last:pb-0">
+                          {i < timeline.length - 1 && <span className="absolute left-[9px] top-6 bottom-0 w-px bg-[#E5E2D9]" />}
+                          <span className="absolute left-0 top-0.5 w-[19px] h-[19px] rounded-full flex items-center justify-center" style={{ background: `${meta.color}1f`, color: meta.color }}><meta.icon size={12} /></span>
+                          <div className="text-[13.5px] text-[#13182B] leading-snug"><span className="font-semibold">{n.author}</span> <span className="text-[#3A4257]">{meta.label}</span></div>
+                          {n.text && <div className="text-[13px] text-[#5b6472] mt-1.5 bg-[#F4F2EC] rounded-lg px-2.5 py-1.5 leading-relaxed">{n.text}</div>}
+                          <div className="font-mono text-[11px] text-[#9AA0AD] mt-1">{timeAgo(n.at)}</div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
               )}
             </div>
           )}
@@ -231,6 +269,31 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
         )}
       </aside>
 
+      {completing && (
+        <NotePromptModal
+          title="Complete follow-up"
+          subtitle={`How did it go with ${lead.name}?`}
+          label="Outcome / notes"
+          placeholder="e.g. Spoke with them — sending a proposal next week."
+          confirmLabel="Mark complete"
+          onCancel={() => setCompleting(false)}
+          onConfirm={(outcome) => completeFollowUp(outcome)}
+        />
+      )}
+
+      {pendingMove && (
+        <StageNoteModal
+          leadName={lead.name}
+          stageName={pendingMove}
+          color={stageColor(pendingMove)}
+          onCancel={() => setPendingMove(null)}
+          onConfirm={async (note) => {
+            try { await advanceLeadStatus(lead, pendingMove, stages, note); } catch (e) { console.error(e); }
+            setPendingMove(null);
+          }}
+        />
+      )}
+
       {pendingFU && (
         <FollowUpModal
           leadName={lead.name}
@@ -239,7 +302,7 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
           initialNote={lead.followUpNote || ""}
           onCancel={() => setPendingFU(null)}
           onConfirm={async (date, note) => {
-            const payload: Record<string, unknown> = { followUpDate: date, followUpNote: note };
+            const payload: Record<string, unknown> = { followUpDate: date, followUpNote: note, notes: arrayUnion(leadNote("followup", { stage: pendingFU.stage, date, text: note })) };
             if (pendingFU.applyStatus) payload.status = pendingFU.stage;
             try {
               await updateDoc(doc(db, "bookings", lead.id), payload);
