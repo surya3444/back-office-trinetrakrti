@@ -11,11 +11,14 @@ export function setAuditActor(a: { uid: string; email: string; name: string } | 
 
 // Append an entry to the audit trail. Best-effort: logging must never block or
 // break the underlying action, so failures are swallowed with a console warning.
-export async function logAction(action: string, details = "") {
+// `targetId` ties the entry to a specific record (e.g. a lead) so it can be
+// shown in that record's own activity timeline.
+export async function logAction(action: string, details = "", targetId?: string) {
   try {
     await addDoc(collection(db, "auditLogs"), {
       action,
       details,
+      targetId: targetId ?? null,
       actorUid: actor?.uid ?? "system",
       actorEmail: actor?.email ?? "unknown",
       actorName: actor?.name || actor?.email || "Unknown",

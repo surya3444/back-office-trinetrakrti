@@ -82,7 +82,7 @@ export default function FollowUps() {
       if (note !== undefined) payload.followUpNote = note;
       await updateDoc(doc(db, "bookings", leadId), payload);
       const lead = leads.find((l) => l.id === leadId);
-      await logAction("Rescheduled follow-up", `${lead?.name || "Lead"} → ${date}`);
+      await logAction("Rescheduled follow-up", `${lead?.name || "Lead"} → ${date}`, leadId);
     } catch (e) { console.error(e); }
   };
 
@@ -90,7 +90,7 @@ export default function FollowUps() {
     try {
       await updateDoc(doc(db, "bookings", leadId), { followUpDate: null });
       const lead = leads.find((l) => l.id === leadId);
-      await logAction("Completed follow-up", lead?.name || "Lead");
+      await logAction("Completed follow-up", lead?.name || "Lead", leadId);
     } catch (e) { console.error(e); }
   };
 

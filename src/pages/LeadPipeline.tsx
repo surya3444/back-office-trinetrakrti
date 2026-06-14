@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { UserCheck, CalendarClock, Layers, X, Plus, StickyNote } from "lucide-react";
+import { UserCheck, CalendarClock, Layers, X, Plus, StickyNote, Building2, Phone, UserPlus } from "lucide-react";
 import type { PipelineStage } from "./Settings";
 import { PageHeader, Loader, EmptyState } from "../components/ui";
 import { FollowUpModal } from "../components/FollowUpModal";
+import { LeadDrawer } from "../components/LeadDrawer";
 import { advanceLeadStatus } from "../lib/leads";
+import { logAction } from "../lib/audit";
 import { useAuth } from "../lib/auth-context";
 import { todayStr, addDaysStr, relativeDay, isOverdue } from "../lib/dates";
 
 const BLANK_LEAD = { name: "", email: "", phone: "", company: "", problem: "", callType: "clarity", stage: "" };
 
 export default function LeadPipeline() {
-  const { can } = useAuth();
+  const { can, member } = useAuth();
   const canWrite = can("pipeline", "write");
   const [leads, setLeads] = useState<any[]>([]);
   const [stages, setStages] = useState<PipelineStage[]>([]);
@@ -25,6 +27,9 @@ export default function LeadPipeline() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(BLANK_LEAD);
   const [saving, setSaving] = useState(false);
+
+  // Lead detail drawer
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // 1. Fetch dynamic stages from settings
   useEffect(() => {
@@ -86,7 +91,7 @@ export default function LeadPipeline() {
     const stage = form.stage || stages[0]?.name;
     const stageObj = stages.find(s => s.name === stage);
     try {
-      await addDoc(collection(db, "bookings"), {
+      const ref = await addDoc(collection(db, "bookings"), {
         name: form.name,
         email: form.email,
         phone: form.phone || "N/A",
@@ -96,10 +101,12 @@ export default function LeadPipeline() {
         stage: "Added manually",
         status: stage,
         source: "manual",
+        createdByName: member?.name || member?.email || "Team",
         // Seed a follow-up reminder when added straight into a follow-up stage.
         followUpDate: stageObj?.isFollowUp ? addDaysStr(todayStr(), 1) : null,
         createdAt: serverTimestamp(),
       });
+      await logAction("Created lead", `${form.name} in ${stage}`, ref.id);
       setShowAdd(false);
       setForm(BLANK_LEAD);
     } catch (error) { console.error(error); }
@@ -163,29 +170,41 @@ export default function LeadPipeline() {
               <div className="bg-[#F7F5EF] rounded-2xl p-2.5 flex-1 flex flex-col gap-2.5 min-h-[460px]" style={{ boxShadow: `inset 0 2.5px 0 ${color}` }}>
                 {columnLeads.map((lead) => {
                   const overdue = lead.followUpDate && isOverdue(lead.followUpDate);
+                  const creator = lead.createdByName || (lead.source === "manual" ? "Team" : "Website");
+                  const hasCompany = lead.company && lead.company !== "N/A";
+                  const hasPhone = lead.phone && lead.phone !== "N/A";
                   return (
-                    <div key={lead.id} draggable={canWrite} onDragStart={(e) => handleDragStart(e, lead.id)}
-                      className={`bg-white border border-[#EAE7DE] rounded-xl p-3.5 shadow-[0_1px_2px_rgba(19,24,43,0.04)] hover:shadow-[0_6px_16px_-8px_rgba(19,24,43,0.22)] hover:border-[#D7D3C7] transition-all animate-fade-in ${canWrite ? "cursor-grab active:cursor-grabbing" : ""}`}>
+                    <div key={lead.id} draggable={canWrite} onDragStart={(e) => handleDragStart(e, lead.id)} onClick={() => setSelectedId(lead.id)}
+                      className={`bg-white border border-[#EAE7DE] rounded-xl p-3.5 shadow-[0_1px_2px_rgba(19,24,43,0.04)] hover:shadow-[0_6px_16px_-8px_rgba(19,24,43,0.22)] hover:border-[#D7D3C7] transition-all animate-fade-in cursor-pointer ${canWrite ? "active:cursor-grabbing" : ""}`}>
                       <div className="flex items-start justify-between gap-2">
                         <h4 className="font-semibold text-[#13182B] text-[14.5px] leading-snug">{lead.name}</h4>
-                        {lead.source === "manual" && <span className="font-mono text-[9px] uppercase tracking-wider text-[#2B41E0] bg-[#EDEFFF] px-1.5 py-0.5 rounded shrink-0 mt-0.5">manual</span>}
+                        <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                          <span className="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#EDEFFF] text-[#2B41E0] capitalize">{lead.callType}</span>
+                        </div>
                       </div>
-                      <p className="text-[#6B7283] text-[12.5px] mt-0.5 truncate">{lead.company && lead.company !== "N/A" ? lead.company : lead.email}</p>
 
-                      <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#9AA0AD]">{lead.callType}</span>
-                        {stageObj.isFollowUp && lead.followUpDate && (
+                      <div className="mt-2 space-y-1">
+                        {hasCompany && <div className="flex items-center gap-1.5 text-[#6B7283] text-[12.5px] truncate"><Building2 size={12} className="text-[#B6B2A6] shrink-0" /> {lead.company}</div>}
+                        <div className="flex items-center gap-1.5 text-[#6B7283] text-[12.5px] truncate"><Phone size={12} className="text-[#B6B2A6] shrink-0" /> {hasPhone ? lead.phone : <span className="text-[#C4C0B4]">No phone</span>}</div>
+                      </div>
+
+                      {stageObj.isFollowUp && lead.followUpDate && (
+                        <div className="mt-2.5">
                           <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-semibold inline-flex items-center gap-1 ${overdue ? "bg-[#FFEDE9] text-[#FF5C49]" : "bg-[#FFF6E5] text-[#B7791F]"}`}>
                             <CalendarClock size={10} /> {relativeDay(lead.followUpDate)}
                           </span>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       {stageObj.isFollowUp && lead.followUpNote && (
                         <div className="mt-2.5 flex gap-1.5 text-[12px] text-[#8a6420] bg-[#FFFaf0] rounded-md px-2 py-1.5 leading-relaxed">
                           <StickyNote size={12} className="shrink-0 mt-0.5" /> <span className="line-clamp-2">{lead.followUpNote}</span>
                         </div>
                       )}
+
+                      <div className="mt-2.5 pt-2.5 border-t border-[#F0EEE7] flex items-center gap-1.5 text-[11px] text-[#9AA0AD]">
+                        <UserPlus size={11} /> Added by <span className="font-medium text-[#6B7283]">{creator}</span>
+                      </div>
                     </div>
                   );
                 })}
@@ -218,6 +237,7 @@ export default function LeadPipeline() {
           onConfirm={async (date, note) => {
             try {
               await updateDoc(doc(db, "bookings", followUp.leadId), { status: followUp.stage, followUpDate: date, followUpNote: note });
+              await logAction("Scheduled follow-up", `${followUpLead?.name || "Lead"} on ${date}`, followUp.leadId);
             } catch (error) { console.error(error); }
             setFollowUp(null);
           }}
@@ -273,6 +293,13 @@ export default function LeadPipeline() {
           </form>
         </div>
       )}
+
+      {/* Lead detail drawer */}
+      {selectedId && (() => {
+        const lead = leads.find((l) => l.id === selectedId);
+        if (!lead) return null;
+        return <LeadDrawer lead={lead} stages={stages} canWrite={canWrite} onClose={() => setSelectedId(null)} />;
+      })()}
     </div>
   );
 }

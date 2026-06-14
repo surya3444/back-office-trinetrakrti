@@ -22,12 +22,12 @@ export async function advanceLeadStatus(lead: any, targetStage: string, stages: 
       createdAt: serverTimestamp(),
     });
     await updateDoc(doc(db, "bookings", lead.id), { status: targetStage, convertedToClient: true, followUpDate: null });
-    await logAction("Converted lead to client", `${lead.name} (${targetStage})`);
+    await logAction("Converted lead to client", `${lead.name} (${targetStage})`, lead.id);
   } else {
     await updateDoc(doc(db, "bookings", lead.id), {
       status: targetStage,
       followUpDate: targetObj?.isFollowUp ? lead.followUpDate || null : null,
     });
-    await logAction("Moved lead", `${lead.name} → ${targetStage}`);
+    await logAction("Moved lead", `${lead.name} → ${targetStage}`, lead.id);
   }
 }

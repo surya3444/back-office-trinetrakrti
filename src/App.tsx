@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Roles from "./pages/Roles";
 import Members from "./pages/Members";
 import AuditLog from "./pages/AuditLog";
+import Profile from "./pages/Profile";
 
 export default function App() {
   return (
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="projects" element={<Guard m="projects"><Projects /></Guard>} />
         <Route path="products" element={<Guard m="products"><ProductsAdmin /></Guard>} />
         <Route path="settings" element={<Guard m="settings"><Settings /></Guard>} />
+        <Route path="profile" element={<Profile />} />
         <Route path="roles" element={<AdminGuard><Roles /></AdminGuard>} />
         <Route path="members" element={<AdminGuard><Members /></AdminGuard>} />
         <Route path="activity" element={<AdminGuard><AuditLog /></AdminGuard>} />

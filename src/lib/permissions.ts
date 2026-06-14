@@ -33,6 +33,7 @@ export interface Member {
   name: string;
   roleId: string | null;
   roleName?: string;
+  photoURL?: string;
   disabled?: boolean;
   createdAt?: any;
   createdBy?: string;

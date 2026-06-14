@@ -64,8 +64,13 @@ service cloud.firestore {
     match /members/{id} {
       // Reading your OWN member doc must always be allowed (even before it
       // exists) so the app can load; admins can read everyone.
-      allow read:  if signedIn() && (id == request.auth.uid || isAdmin());
-      allow write: if isAdmin();
+      allow read:   if signedIn() && (id == request.auth.uid || isAdmin());
+      allow create, delete: if isAdmin();
+      // Admins can change anything; a member may edit only their own name/photo
+      // (never their own role or disabled flag).
+      allow update: if isAdmin()
+        || (id == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoURL']));
     }
 
     match /auditLogs/{id} {

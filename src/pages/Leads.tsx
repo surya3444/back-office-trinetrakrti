@@ -53,7 +53,7 @@ export default function Leads() {
     setIsProcessing(true);
     try {
       await updateDoc(doc(db, "bookings", selectedLead.id), { status: firstStage });
-      await logAction("Approved lead to pipeline", `${selectedLead.name} → ${firstStage}`);
+      await logAction("Approved lead to pipeline", `${selectedLead.name} → ${firstStage}`, selectedLead.id);
       setSelectedLead(null);
     } catch (error) {
       console.error(error);
@@ -65,7 +65,7 @@ export default function Leads() {
   const handleArchiveLead = async () => {
     if (!selectedLead) return;
     await updateDoc(doc(db, "bookings", selectedLead.id), { status: "Archived" });
-    await logAction("Archived lead", selectedLead.name);
+    await logAction("Archived lead", selectedLead.name, selectedLead.id);
     setSelectedLead(null);
   };
 

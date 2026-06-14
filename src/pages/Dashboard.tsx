@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { LayoutDashboard, Search, Inbox, Layers, CalendarClock, UserCheck, Archive, RotateCcw, X, StickyNote, Phone, Mail } from "lucide-react";
@@ -36,7 +37,8 @@ export default function Dashboard() {
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [search, setSearch] = useState("");
+  const [params] = useSearchParams();
+  const [search, setSearch] = useState(params.get("q") || "");
   const [statusFilter, setStatusFilter] = useState("all");
   const [callTypeFilter, setCallTypeFilter] = useState("all");
   const [fuFilter, setFuFilter] = useState<FuFilter>("all");
@@ -59,6 +61,12 @@ export default function Dashboard() {
       if (s.exists() && s.data().stages) setStages(s.data().stages);
     });
   }, []);
+
+  // Sync the search box when the global top-bar search routes here with ?q=.
+  useEffect(() => {
+    const q = params.get("q");
+    if (q !== null) setSearch(q);
+  }, [params]);
 
   const stageNames = useMemo(() => new Set(stages.map((s) => s.name)), [stages]);
   const stageColor = (status: string) => stages.find((s) => s.name === status)?.color || "#6B7283";
@@ -120,10 +128,10 @@ export default function Dashboard() {
   };
 
   const archive = async (lead: Lead) => {
-    try { await updateDoc(doc(db, "bookings", lead.id), { status: "Archived" }); await logAction("Archived lead", lead.name); } catch (e) { console.error(e); }
+    try { await updateDoc(doc(db, "bookings", lead.id), { status: "Archived" }); await logAction("Archived lead", lead.name, lead.id); } catch (e) { console.error(e); }
   };
   const restore = async (lead: Lead) => {
-    try { await updateDoc(doc(db, "bookings", lead.id), { status: stages[0]?.name || "new" }); await logAction("Restored lead", lead.name); } catch (e) { console.error(e); }
+    try { await updateDoc(doc(db, "bookings", lead.id), { status: stages[0]?.name || "new" }); await logAction("Restored lead", lead.name, lead.id); } catch (e) { console.error(e); }
   };
 
   const fmtCreated = (ts: any) => {
@@ -309,7 +317,7 @@ export default function Dashboard() {
             if (pending.applyStatus) payload.status = pending.stage;
             try {
               await updateDoc(doc(db, "bookings", pending.lead.id), payload);
-              await logAction("Scheduled follow-up", `${pending.lead.name} on ${date}`);
+              await logAction("Scheduled follow-up", `${pending.lead.name} on ${date}`, pending.lead.id);
             } catch (e) { console.error(e); }
             setPending(null);
           }}
