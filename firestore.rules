@@ -20,6 +20,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
+    // A staff account has a member doc; clients do not.
+    function isStaff() { return signedIn() && exists(/databases/$(database)/documents/members/$(request.auth.uid)); }
 
     // Marketing site: the lead form creates bookings; the storefront reads products.
     match /bookings/{id} {
@@ -29,6 +31,23 @@ service cloud.firestore {
     match /products/{id} {
       allow read: if true;
       allow write: if signedIn();
+    }
+
+    // Projects — staff manage everything; the linked client may read their own
+    // project and may only mutate requirement responses + payment milestones.
+    match /projects/{id} {
+      allow read: if isStaff() || (signedIn() && resource.data.clientUid == request.auth.uid);
+      allow create, delete: if isStaff();
+      allow update: if isStaff()
+        || (signedIn() && resource.data.clientUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['requirementResponses', 'requirementStatus', 'requirementSubmittedAt', 'paymentMilestones', 'updatedAt']));
+    }
+
+    // Client portal logins — a client reads only their own doc; staff manage them.
+    match /clientUsers/{uid} {
+      allow read: if isStaff() || (signedIn() && request.auth.uid == uid);
+      allow write: if isStaff();
     }
 
     // Back-office collections — any signed-in account; the app's roles decide

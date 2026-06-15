@@ -1,11 +1,20 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
-import { doc, onSnapshot, getDocs, collection, setDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot, getDoc, getDocs, collection, setDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { setAuditActor, logAction } from "./audit";
 import { fullPermissions, type Member, type Role, type Action } from "./permissions";
 
-type Access = "loading" | "noauth" | "noaccess" | "disabled" | "ok";
+// A client (customer) login — links a Firebase user to one project portal.
+export interface ClientUser {
+  uid: string;
+  email: string;
+  name: string;
+  projectId: string;
+  disabled?: boolean;
+}
+
+type Access = "loading" | "noauth" | "noaccess" | "disabled" | "ok" | "client";
 
 interface AuthCtx {
   user: User | null;
@@ -13,6 +22,7 @@ interface AuthCtx {
   role: Role | null;
   isAdmin: boolean;
   access: Access;
+  clientUser: ClientUser | null;
   can: (moduleKey: string, action: Action) => boolean;
   signOutNow: () => void;
 }
@@ -27,13 +37,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [roleId, setRoleId] = useState<string | null>(null);
   const [access, setAccess] = useState<Access>("loading");
+  const [clientUser, setClientUser] = useState<ClientUser | null>(null);
   const bootstrapping = useRef(false);
 
   // Track Firebase auth session.
   useEffect(() => onAuthStateChanged(auth, (u) => {
     setUser(u);
     if (!u) {
-      setMember(null); setRole(null); setRoleId(null); setIsAdmin(false);
+      setMember(null); setRole(null); setRoleId(null); setIsAdmin(false); setClientUser(null);
       setAccess("noauth"); setAuditActor(null);
     } else {
       setAccess("loading");
@@ -74,15 +85,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsub = onSnapshot(doc(db, "members", user.uid), async (snap) => {
       if (snap.exists()) {
         const m = { uid: user.uid, ...snap.data() } as Member;
-        setMember(m);
+        setMember(m); setClientUser(null);
         setAuditActor({ uid: user.uid, email: user.email || "", name: m.name || user.email || "" });
         if (m.disabled) { setAccess("disabled"); setIsAdmin(false); setRoleId(null); return; }
         setRoleId(m.roleId || null);
         if (!m.roleId) { setRole(null); setIsAdmin(false); }
         setAccess("ok");
       } else {
-        // No member doc — either bootstrap the very first user, or deny access.
-        // Under strict rules a non-member can't list members; treat that as no access.
+        // No member doc. Either this is a client login, the very first admin to
+        // bootstrap, or someone with no access at all.
+        // 1) Client portal account?
+        try {
+          const cu = await getDoc(doc(db, "clientUsers", user.uid));
+          if (cu.exists()) {
+            const c = { uid: user.uid, ...cu.data() } as ClientUser;
+            setMember(null); setRole(null); setRoleId(null); setIsAdmin(false);
+            setAuditActor({ uid: user.uid, email: user.email || "", name: c.name || user.email || "" });
+            if (c.disabled) { setClientUser(null); setAccess("disabled"); return; }
+            setClientUser(c); setAccess("client");
+            return;
+          }
+        } catch (e) {
+          console.warn("client lookup denied", e);
+        }
+        // 2) First-ever user → bootstrap the administrator.
         try {
           const all = await getDocs(collection(db, "members"));
           if (all.empty) {
@@ -92,7 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
           console.warn("members lookup denied", e);
         }
-        setMember(null); setRole(null); setRoleId(null); setIsAdmin(false);
+        // 3) No access.
+        setMember(null); setRole(null); setRoleId(null); setIsAdmin(false); setClientUser(null);
         setAuditActor({ uid: user.uid, email: user.email || "", name: user.email || "" });
         setAccess("noaccess");
       }
@@ -121,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ user, member, role, isAdmin, access, can, signOutNow: () => signOut(auth) }}>
+    <Ctx.Provider value={{ user, member, role, isAdmin, access, clientUser, can, signOutNow: () => signOut(auth) }}>
       {children}
     </Ctx.Provider>
   );

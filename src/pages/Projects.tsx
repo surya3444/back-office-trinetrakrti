@@ -1,251 +1,180 @@
 import { useState, useEffect } from "react";
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 import { db } from "../lib/firebase";
-import { Plus, MoreHorizontal, Calendar, X } from "lucide-react";
+import { FolderKanban, Plus, X, ChevronRight, CircleDollarSign, ClipboardList } from "lucide-react";
+import { PageHeader, Loader, EmptyState } from "../components/ui";
+import { useAuth } from "../lib/auth-context";
+import { createProject, stageProgress, type Project, type ProjectStatus } from "../lib/projects";
 
-interface Project {
-  id: string;
-  title: string;
-  client: string;
-  stage: string;
-  dueDate: string;
-  createdAt?: any;
-}
+interface Client { id: string; name: string; company?: string; email?: string }
 
-const STAGES = ["Understand", "Design", "Build", "Automate", "Scale"];
+const STATUS_STYLE: Record<ProjectStatus, string> = {
+  active: "bg-[#E5322B] text-white border-[#E5322B]",
+  on_hold: "bg-[#FFF6E5] text-[#B7791F] border-[#B7791F]",
+  completed: "bg-[#E6F6EF] text-[#0F9D6B] border-[#0F9D6B]",
+};
+const STATUS_LABEL: Record<ProjectStatus, string> = { active: "Active", on_hold: "On hold", completed: "Completed" };
 
 export default function Projects() {
+  const { can, member } = useAuth();
+  const canWrite = can("projects", "write");
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Modal State for adding new projects
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newProject, setNewProject] = useState({
-    title: "",
-    client: "",
-    dueDate: "",
-  });
+  const [loadError, setLoadError] = useState("");
 
-  // 1. Listen to the 'projects' collection in real-time
+  const [showAdd, setShowAdd] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ title: "", clientId: "", clientName: "", clientEmail: "", dueDate: "" });
+
   useEffect(() => {
-    const q = query(collection(db, "projects"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const projectData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Project[];
-      
-      setProjects(projectData);
+    const unsub = onSnapshot(query(collection(db, "projects"), orderBy("createdAt", "desc")), (snap) => {
+      setProjects(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Project[]);
+      setLoadError("");
+      setLoading(false);
+    }, (err) => {
+      setLoadError(err.code === "permission-denied"
+        ? "Couldn't load projects — your Firestore rules may not be deployed. Run: firebase deploy --only firestore:rules"
+        : err.message);
       setLoading(false);
     });
-
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
-  // 2. Handle HTML5 Drag and Drop
-  const handleDragStart = (e: React.DragEvent, projectId: string) => {
-    e.dataTransfer.setData("projectId", projectId);
-    e.dataTransfer.effectAllowed = "move";
+  useEffect(() => {
+    const unsub = onSnapshot(query(collection(db, "clients"), orderBy("createdAt", "desc")), (snap) => {
+      setClients(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Client[]);
+    }, () => {});
+    return () => unsub();
+  }, []);
+
+  const pickClient = (clientId: string) => {
+    const c = clients.find((x) => x.id === clientId);
+    setForm((f) => ({ ...f, clientId, clientName: c?.name || "", clientEmail: c?.email || "" }));
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault(); // Necessary to allow dropping
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDrop = async (e: React.DragEvent, targetStage: string) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const projectId = e.dataTransfer.getData("projectId");
-    if (!projectId) return;
-
-    // Check if the stage actually changed
-    const project = projects.find(p => p.id === projectId);
-    if (project && project.stage !== targetStage) {
-      try {
-        const projectRef = doc(db, "projects", projectId);
-        await updateDoc(projectRef, { stage: targetStage });
-      } catch (error) {
-        console.error("Error updating project stage:", error);
-      }
-    }
-  };
-
-  // 3. Handle adding a new project
-  const handleAddProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newProject.title || !newProject.client) return;
-    
-    setIsSubmitting(true);
+    if (!form.title.trim() || !form.clientId) return;
+    setSaving(true);
     try {
-      await addDoc(collection(db, "projects"), {
-        title: newProject.title,
-        client: newProject.client,
-        dueDate: newProject.dueDate || "TBD",
-        stage: "Understand", // Always defaults to the first stage
-        createdAt: serverTimestamp()
+      const id = await createProject({
+        title: form.title.trim(),
+        clientId: form.clientId || undefined,
+        clientName: form.clientName.trim(),
+        clientEmail: form.clientEmail.trim() || undefined,
+        dueDate: form.dueDate,
+        createdBy: member?.uid,
       });
-      setShowAddModal(false);
-      setNewProject({ title: "", client: "", dueDate: "" });
-    } catch (error) {
-      console.error("Error adding project:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
+      setShowAdd(false);
+      setForm({ title: "", clientId: "", clientName: "", clientEmail: "", dueDate: "" });
+      navigate(`/projects/${id}`);
+    } catch (err) { console.error(err); }
+    finally { setSaving(false); }
   };
 
-  if (loading) return <div className="text-[#9AA0AD] animate-pulse font-medium">Loading project board...</div>;
+  if (loading) return <Loader label="Loading projects" sub="Gathering your active builds" />;
+
+  // Members without the 'projects' role only see projects they're assigned to.
+  const fullRead = can("projects", "read");
+  const visible = fullRead ? projects : projects.filter((p) => (p.members || []).includes(member?.uid || ""));
+  const active = visible.filter((p) => p.status === "active").length;
 
   return (
-    <div className="font-['Inter',sans-serif] h-full flex flex-col relative">
-      {/* Header Section */}
-      <div className="flex justify-between items-end mb-8">
-        <div>
-          <div className="font-mono text-[12px] text-[#E5322B] tracking-[0.16em] uppercase font-medium flex items-center gap-2 mb-2">
-            <span className="w-1.5 h-1.5 rounded-none bg-[#E5322B]"></span>
-            Active Builds
+    <div className="font-['Inter',sans-serif]">
+      <PageHeader
+        icon={FolderKanban}
+        eyebrow="Delivery"
+        title={fullRead ? "Projects" : "My Projects"}
+        subtitle={fullRead ? "Every client build, its stages, requirements and payments — in one place." : "Projects you're assigned to. Mark stages as you complete your work."}
+        stats={[
+          { label: fullRead ? "Total" : "Assigned", value: visible.length, accent: "#17222F" },
+          { label: "Active", value: active, accent: "#E5322B" },
+        ]}
+        actions={canWrite && (
+          <button onClick={() => setShowAdd(true)} className="bg-[#17222F] text-white px-5 py-2.5 rounded-none font-semibold text-[14.5px] flex items-center gap-2 hover:-translate-y-0.5 transition-transform">
+            <Plus size={18} /> New Project
+          </button>
+        )}
+      />
+
+      {loadError ? (
+        <div className="border-2 border-[#E5322B] bg-[#FBE9E7] text-[#E5322B] px-5 py-4 font-medium text-[14px]">{loadError}</div>
+      ) : visible.length === 0 ? (
+        <EmptyState icon={FolderKanban} title={fullRead ? "No projects yet" : "No assigned projects"} sub={fullRead ? "Create your first project to start tracking stages, requirements and payments." : "You'll see a project here once a manager assigns you to one."} />
+      ) : (
+        <div className="border-2 border-[#17222F] bg-white overflow-hidden">
+          <div className="grid grid-cols-[1.6fr_1fr_0.8fr_1.2fr_auto] gap-4 px-5 py-3 border-b-2 border-[#17222F] font-mono text-[11px] uppercase tracking-[0.1em] text-[#5A6473] bg-[#F2F2F2]">
+            <div>Project</div><div>Status</div><div>Stage</div><div>Requirements / Pay</div><div></div>
           </div>
-          <h1 className="text-[32px] font-bold text-[#17222F] leading-none tracking-tight">Project Pipeline</h1>
-        </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="bg-[#17222F] text-white px-5 py-2.5 rounded-none font-semibold text-[14.5px] flex items-center gap-2 hover:-translate-y-0.5 transition-transform"
-        >
-          <Plus size={18} />
-          New Project
-        </button>
-      </div>
-
-      {/* Kanban Board */}
-      <div className="flex gap-6 overflow-x-auto pb-4 flex-1">
-        {STAGES.map((stage) => {
-          const columnProjects = projects.filter((p) => p.stage === stage);
-          
-          return (
-            <div 
-              key={stage} 
-              className="min-w-[320px] w-[320px] flex flex-col"
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, stage)}
-            >
-              {/* Column Header */}
-              <div className="flex justify-between items-center mb-4 px-1">
-                <h3 className="font-semibold text-[#17222F] text-[16px]">{stage}</h3>
-                <span className="bg-[#17222F] text-[#5A6473] font-mono text-[11px] px-2 py-0.5 rounded-none font-semibold">
-                  {columnProjects.length}
-                </span>
-              </div>
-
-              {/* Column Content */}
-              <div className="bg-[#F2F2F2] border border-[#17222F] rounded-none p-3 flex-1 flex flex-col gap-3 min-h-[500px] transition-colors duration-200">
-                {columnProjects.map((project) => (
-                  <div 
-                    key={project.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, project.id)}
-                    className="bg-[#FFFFFF] border border-[#17222F] rounded-none p-5 hover:border-[#E5322B] transition-colors cursor-grab active:cursor-grabbing group hover:"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <span className="bg-[#F2F2F2] text-[#E5322B] font-mono text-[10px] px-2 py-1 rounded-none uppercase tracking-wider font-semibold truncate max-w-[180px]">
-                        {project.client}
-                      </span>
-                      <button className="text-[#9AA0AD] hover:text-[#17222F] transition-colors">
-                        <MoreHorizontal size={16} />
-                      </button>
-                    </div>
-                    
-                    <h4 className="font-bold text-[#17222F] text-[17px] leading-tight mb-4">
-                      {project.title}
-                    </h4>
-                    
-                    <div className="flex items-center gap-2 text-[#5A6473] font-mono text-[12px] border-t border-[#17222F] pt-3">
-                      <Calendar size={13} />
-                      <span>Due {project.dueDate}</span>
-                    </div>
+          <div className="divide-y-2 divide-[#17222F]">
+            {visible.map((p) => {
+              const prog = stageProgress(p.stages || []);
+              const cur = (p.stages || []).find((s) => s.id === p.currentStageId);
+              const paid = (p.paymentMilestones || []).filter((m) => m.status === "paid").length;
+              const due = (p.paymentMilestones || []).length - paid;
+              return (
+                <button key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="w-full text-left grid grid-cols-[1.6fr_1fr_0.8fr_1.2fr_auto] gap-4 px-5 py-4 items-center hover:bg-[#F2F2F2] transition-colors group">
+                  <div className="min-w-0">
+                    <div className="font-bold text-[#17222F] text-[15px] truncate uppercase tracking-tight">{p.title}</div>
+                    <div className="text-[13px] text-[#5A6473] truncate">{p.clientName}</div>
                   </div>
-                ))}
-                
-                {/* Empty State for Drop Zone */}
-                {columnProjects.length === 0 && (
-                  <div className="flex-1 border-2 border-dashed border-[#17222F] rounded-none flex items-center justify-center text-[#9AA0AD] font-mono text-[12px] pointer-events-none">
-                    Drop here
+                  <div>
+                    <span className={`inline-block px-2.5 py-1 rounded-none text-[11px] font-bold uppercase tracking-wide border-2 ${STATUS_STYLE[p.status] || ""}`}>{STATUS_LABEL[p.status] || p.status}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-mono text-[11px] text-[#17222F] truncate">{cur?.name || "—"}</div>
+                    <div className="h-1.5 bg-[#F2F2F2] border border-[#17222F] mt-1.5"><div className="h-full bg-[#E5322B]" style={{ width: `${prog.pct}%` }} /></div>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono text-[11px] text-[#5A6473]">
+                    <span className="inline-flex items-center gap-1.5"><ClipboardList size={13} className="text-[#17222F]" /> {reqLabel(p.requirementStatus)}</span>
+                    <span className="inline-flex items-center gap-1.5"><CircleDollarSign size={13} className="text-[#17222F]" /> {paid}/{paid + due}</span>
+                  </div>
+                  <ChevronRight size={18} className="text-[#9AA0AD] group-hover:text-[#E5322B] transition-colors justify-self-end" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {showAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#17222F]/40 backdrop-blur-sm" onClick={() => setShowAdd(false)}>
+          <div className="bg-white w-full max-w-md border-2 border-[#17222F] flex flex-col animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="px-7 py-5 border-b-2 border-[#17222F] flex justify-between items-center">
+              <div>
+                <div className="font-mono text-[11px] text-[#E5322B] tracking-[0.16em] uppercase font-semibold mb-1">Delivery</div>
+                <h2 className="text-[22px] font-black text-[#17222F] leading-none uppercase">New Project</h2>
+              </div>
+              <button onClick={() => setShowAdd(false)} className="w-8 h-8 flex items-center justify-center bg-[#F2F2F2] text-[#5A6473] hover:bg-[#17222F] hover:text-white transition-colors"><X size={16} strokeWidth={2.5} /></button>
+            </div>
+            <form onSubmit={submit} className="p-7 flex flex-col gap-5">
+              <Field label="Project title">
+                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. NGO Management App" required className={inputCls} />
+              </Field>
+              <Field label="Client">
+                {clients.length > 0 ? (
+                  <>
+                    <select value={form.clientId} onChange={(e) => pickClient(e.target.value)} required className={inputCls}>
+                      <option value="">— Select a client —</option>
+                      {clients.map((c) => <option key={c.id} value={c.id}>{c.name}{c.company ? ` · ${c.company}` : ""}</option>)}
+                    </select>
+                    {form.clientEmail && <p className="font-mono text-[11px] text-[#9AA0AD] mt-1.5">{form.clientEmail}</p>}
+                  </>
+                ) : (
+                  <div className="border-2 border-dashed border-[#17222F] p-4 text-[13px] text-[#5A6473]">
+                    No clients yet. Add one in <button type="button" onClick={() => navigate("/crm")} className="text-[#E5322B] font-semibold underline">CRM</button> first.
                   </div>
                 )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Add Project Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#17222F] bg-opacity-40 backdrop-blur-sm">
-          <div className="bg-[#FFFFFF] w-full max-w-md border border-[#17222F] rounded-none overflow-hidden flex flex-col">
-            
-            <div className="px-8 py-6 border-b border-[#17222F] flex justify-between items-center bg-[#FFFFFF]">
-              <div>
-                <div className="font-mono text-[11px] text-[#E5322B] tracking-[0.16em] uppercase font-semibold mb-1">Pipeline</div>
-                <h2 className="text-[22px] font-bold text-[#17222F] leading-none">Add New Project</h2>
-              </div>
-              <button 
-                onClick={() => setShowAddModal(false)} 
-                className="w-8 h-8 flex items-center justify-center rounded-none bg-[#17222F] text-[#5A6473] hover:bg-[#17222F] transition-colors"
-              >
-                <X size={16} strokeWidth={2.5} />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddProject} className="p-8 flex flex-col gap-5">
-              <div>
-                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Project Title</label>
-                <input
-                  type="text"
-                  value={newProject.title}
-                  onChange={(e) => setNewProject({...newProject, title: e.target.value})}
-                  placeholder="e.g. NGO Management App"
-                  className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] text-[15px] focus:outline-none focus:border-[#E5322B] focus: transition-all"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Client Name</label>
-                <input
-                  type="text"
-                  value={newProject.client}
-                  onChange={(e) => setNewProject({...newProject, client: e.target.value})}
-                  placeholder="e.g. Hope Foundation"
-                  className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] text-[15px] focus:outline-none focus:border-[#E5322B] focus: transition-all"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Due Date</label>
-                <input
-                  type="text"
-                  value={newProject.dueDate}
-                  onChange={(e) => setNewProject({...newProject, dueDate: e.target.value})}
-                  placeholder="e.g. Q4 2026, or Nov 1st"
-                  className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] text-[15px] focus:outline-none focus:border-[#E5322B] focus: transition-all"
-                />
-              </div>
-
-              <div className="mt-4 flex gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 bg-[#F2F2F2] text-[#5A6473] font-semibold text-[15px] py-[15px] rounded-none hover:bg-[#17222F] transition-colors"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 bg-[#17222F] text-white font-semibold text-[15px] py-[15px] rounded-none hover:-translate-y-[2px] transition-transform disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? "Adding..." : "Add Project"}
-                </button>
+              </Field>
+              <Field label="Due date (optional)">
+                <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className={inputCls} />
+              </Field>
+              <div className="mt-2 flex gap-3">
+                <button type="button" onClick={() => setShowAdd(false)} className="flex-1 bg-[#F2F2F2] text-[#17222F] font-bold uppercase tracking-wide text-[13px] py-[14px] hover:bg-[#17222F] hover:text-white transition-colors">Cancel</button>
+                <button type="submit" disabled={saving} className="flex-1 bg-[#17222F] text-white font-bold uppercase tracking-wide text-[13px] py-[14px] hover:bg-[#E5322B] transition-colors disabled:opacity-60">{saving ? "Creating…" : "Create"}</button>
               </div>
             </form>
           </div>
@@ -253,4 +182,19 @@ export default function Projects() {
       )}
     </div>
   );
+}
+
+const inputCls = "w-full px-[14px] py-[12px] rounded-none border-2 border-[#17222F] bg-white text-[#17222F] text-[15px] focus:outline-none focus:border-[#E5322B]";
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block font-mono text-[12px] text-[#17222F] uppercase tracking-[0.08em] mb-[7px]">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function reqLabel(s: Project["requirementStatus"]) {
+  return s === "submitted" ? "Submitted" : s === "pending" ? "Awaiting" : "Draft";
 }

@@ -73,8 +73,25 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoURL']));
     }
 
+    // Projects — staff per the 'projects' module; the linked client may read
+    // their own project and only mutate requirement + payment fields.
+    match /projects/{id} {
+      allow read: if canRead('projects') || (signedIn() && resource.data.clientUid == request.auth.uid);
+      allow create, delete: if canWrite('projects');
+      allow update: if canWrite('projects')
+        || (signedIn() && resource.data.clientUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['requirementResponses', 'requirementStatus', 'requirementSubmittedAt', 'paymentMilestones', 'updatedAt']));
+    }
+
+    // Client portal logins — client reads only their own; staff manage them.
+    match /clientUsers/{uid} {
+      allow read:  if (signedIn() && request.auth.uid == uid) || canRead('projects');
+      allow write: if canWrite('projects');
+    }
+
     match /auditLogs/{id} {
-      allow create: if isActiveMember();
+      allow create: if isActiveMember() || (signedIn() && exists(/databases/$(database)/documents/clientUsers/$(request.auth.uid)));
       allow read:   if isAdmin();
       allow update, delete: if false;
     }

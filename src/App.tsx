@@ -10,6 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import Login from "./pages/Login";
 import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
+import ClientApp from "./pages/portal/ClientApp";
 import CRM from "./pages/CRM";
 import ProductsAdmin from "./pages/ProductsAdmin";
 import LeadPipeline from "./pages/LeadPipeline";
@@ -40,6 +42,8 @@ function Shell() {
         <AccessNotice title="Account disabled" message="Your access has been turned off. Please contact an administrator." />
       ) : access === "noaccess" ? (
         <AccessNotice title="No access yet" message="Your account isn't part of this workspace. Ask an administrator to add you as a member." />
+      ) : access === "client" ? (
+        <ClientApp />
       ) : (
         <AppRoutes />
       )}
@@ -56,7 +60,9 @@ function AppRoutes() {
         <Route path="pipeline" element={<Guard m="pipeline"><LeadPipeline /></Guard>} />
         <Route path="followups" element={<Guard m="followups"><FollowUps /></Guard>} />
         <Route path="crm" element={<Guard m="crm"><CRM /></Guard>} />
-        <Route path="projects" element={<Guard m="projects"><Projects /></Guard>} />
+        {/* Access handled inside: full 'projects' role OR a project-assigned member (scoped). */}
+        <Route path="projects" element={<Projects />} />
+        <Route path="projects/:id" element={<ProjectDetail />} />
         <Route path="products" element={<Guard m="products"><ProductsAdmin /></Guard>} />
         <Route path="settings" element={<Guard m="settings"><Settings /></Guard>} />
         <Route path="profile" element={<Profile />} />

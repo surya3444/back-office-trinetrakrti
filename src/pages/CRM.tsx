@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 import { db } from "../lib/firebase";
-import { Plus, Building2, Mail, Phone, Edit2, X, Trash2, Users } from "lucide-react";
+import { Plus, Building2, Mail, Phone, Edit2, X, Trash2, Users, FolderKanban, ChevronRight } from "lucide-react";
 import { PageHeader, Loader } from "../components/ui";
 import { logAction } from "../lib/audit";
 import { useAuth } from "../lib/auth-context";
+import { stageProgress, type Project, type ProjectStatus } from "../lib/projects";
 
 interface Client {
   id: string;
@@ -17,10 +19,14 @@ interface Client {
   createdAt?: any;
 }
 
+const PSTATUS: Record<ProjectStatus, string> = { active: "Active", on_hold: "On hold", completed: "Done" };
+
 export default function CRM() {
   const { can } = useAuth();
+  const navigate = useNavigate();
   const canWrite = can("crm", "write");
   const [clients, setClients] = useState<Client[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal State
@@ -50,6 +56,24 @@ export default function CRM() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Projects, so each client card can show its builds inline.
+  useEffect(() => {
+    const unsub = onSnapshot(query(collection(db, "projects"), orderBy("createdAt", "desc")), (snap) => {
+      setProjects(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Project[]);
+    }, () => {});
+    return () => unsub();
+  }, []);
+
+  // Group projects per client (by id, with a name fallback for legacy projects).
+  const projectsByClient = useMemo(() => {
+    const map: Record<string, Project[]> = {};
+    for (const c of clients) {
+      map[c.id] = projects.filter((p) =>
+        p.clientId === c.id || (!p.clientId && (p.clientName || "").toLowerCase() === c.name.toLowerCase()));
+    }
+    return map;
+  }, [clients, projects]);
 
   const openAddModal = () => {
     setModalMode("add");
@@ -141,9 +165,11 @@ export default function CRM() {
 
       {/* CRM Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-up">
-        {clients.map((client) => (
-          <div 
-            key={client.id} 
+        {clients.map((client) => {
+          const cps = projectsByClient[client.id] || [];
+          return (
+          <div
+            key={client.id}
             className="bg-[#FFFFFF] border border-[#17222F] rounded-none p-6 hover:border-[#0F9D6B] transition-colors group hover: flex flex-col relative"
           >
             <div className="flex justify-between items-start mb-4">
@@ -192,8 +218,43 @@ export default function CRM() {
                 </span>
               )}
             </div>
+
+            {/* Projects for this client */}
+            <div className="mt-5 pt-4 border-t border-[#17222F]">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-[#5A6473] flex items-center gap-1.5"><FolderKanban size={13} /> Projects</div>
+                <span className="font-mono text-[12px] font-bold text-[#0F9D6B]">{cps.length}</span>
+              </div>
+              {cps.length === 0 ? (
+                <div className="font-mono text-[11px] text-[#9AA0AD] uppercase tracking-wide">No projects yet</div>
+              ) : (
+                <div className="space-y-2">
+                  {cps.map((p) => {
+                    const prog = stageProgress(p.stages || []);
+                    const cur = (p.stages || []).find((s) => s.id === p.currentStageId);
+                    const totalM = (p.paymentMilestones || []).length;
+                    const paid = (p.paymentMilestones || []).filter((m) => m.status === "paid").length;
+                    return (
+                      <button key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="w-full text-left border border-[#17222F] p-2.5 hover:border-[#0F9D6B] transition-colors group/p">
+                        <div className="flex items-center gap-2">
+                          <span className="flex-1 truncate font-bold text-[13px] text-[#17222F] uppercase tracking-tight">{p.title}</span>
+                          <span className={`font-mono text-[9px] uppercase tracking-wide ${p.status === "completed" ? "text-[#0F9D6B]" : p.status === "on_hold" ? "text-[#B7791F]" : "text-[#E5322B]"}`}>{PSTATUS[p.status] || p.status}</span>
+                          <ChevronRight size={14} className="text-[#9AA0AD] group-hover/p:text-[#0F9D6B] shrink-0" />
+                        </div>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex-1 h-1.5 bg-[#F2F2F2] border border-[#17222F]"><div className="h-full bg-[#0F9D6B]" style={{ width: `${prog.pct}%` }} /></div>
+                          <span className="font-mono text-[10px] text-[#9AA0AD] whitespace-nowrap">{prog.done}/{prog.total}</span>
+                        </div>
+                        <div className="font-mono text-[10px] text-[#9AA0AD] mt-1 truncate">{cur?.name || "—"}{totalM > 0 ? ` · ₹ ${paid}/${totalM} paid` : ""}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        ))}
+          );
+        })}
 
         {clients.length === 0 && (
           <div className="col-span-full border-2 border-dashed border-[#17222F] rounded-none p-12 flex flex-col items-center justify-center text-center bg-white bg-opacity-50">

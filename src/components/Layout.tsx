@@ -37,11 +37,24 @@ export default function Layout() {
   const [adminOpen, setAdminOpen] = useState(true);
   const [search, setSearch] = useState("");
   const [newLeads, setNewLeads] = useState(0);
+  const [assignedProjects, setAssignedProjects] = useState(0);
 
   const closeMenu = () => setIsMobileMenuOpen(false);
 
+  // A member assigned to a project (but without the 'projects' role) still gets
+  // a scoped link to it.
+  const canReadProjects = can("projects", "read");
+  useEffect(() => {
+    if (canReadProjects || !member?.uid) { setAssignedProjects(0); return; }
+    const q = query(collection(db, "projects"), where("members", "array-contains", member.uid));
+    const unsub = onSnapshot(q, (snap) => setAssignedProjects(snap.size), () => setAssignedProjects(0));
+    return () => unsub();
+  }, [canReadProjects, member?.uid]);
+
   const leadItems = LEAD_ITEMS.filter((i) => can(i.module, "read"));
-  const standalone = STANDALONE_ITEMS.filter((i) => can(i.module, "read"));
+  const standalone = STANDALONE_ITEMS.filter((i) =>
+    i.module === "projects" ? (canReadProjects || assignedProjects > 0) : can(i.module, "read")
+  );
   const isLeadActive = leadItems.some((i) => i.path === location.pathname);
   const isAdminActive = ADMIN_ITEMS.some((i) => i.path === location.pathname);
   const canSeeLeads = can("leads", "read") || can("dashboard", "read") || can("pipeline", "read");
