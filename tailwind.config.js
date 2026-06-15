@@ -6,14 +6,21 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["Inter", "system-ui", "sans-serif"],
+      },
       colors: {
-        ink: "#13182B",
-        coral: "#FF5C49",
-        paper: "#FCFBF8",
+        // Trinetrakrti Swiss palette
+        ink: "#17222F",
+        fg: "#17222F",
+        accent: "#E5322B",
+        coral: "#E5322B",
+        paper: "#FFFFFF",
+        muted: "#F2F2F2",
       },
       keyframes: {
         "fade-up": {
-          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
         "fade-in": {
@@ -29,9 +36,9 @@ export default {
         },
       },
       animation: {
-        "fade-up": "fade-up .5s cubic-bezier(.2,.7,.2,1) both",
-        "fade-in": "fade-in .4s ease both",
-        "scale-in": "scale-in .25s cubic-bezier(.2,.7,.2,1) both",
+        "fade-up": "fade-up .32s ease-out both",
+        "fade-in": "fade-in .25s ease-out both",
+        "scale-in": "scale-in .18s ease-out both",
         shimmer: "shimmer 1.6s infinite",
       },
     },

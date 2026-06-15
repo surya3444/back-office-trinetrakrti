@@ -10,6 +10,7 @@ import { FollowUpModal } from "../components/FollowUpModal";
 import { advanceLeadStatus } from "../lib/leads";
 import { logAction } from "../lib/audit";
 import { useAuth } from "../lib/auth-context";
+import { SERVICES } from "../lib/services";
 import { todayStr, relativeDay, isOverdue } from "../lib/dates";
 
 interface Lead {
@@ -19,7 +20,7 @@ interface Lead {
   phone?: string;
   company?: string;
   problem?: string;
-  callType?: string;
+  service?: string;
   stage?: string;
   status: string;
   source?: string;
@@ -41,7 +42,7 @@ export default function Dashboard() {
   const [params] = useSearchParams();
   const [search, setSearch] = useState(params.get("q") || "");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [callTypeFilter, setCallTypeFilter] = useState("all");
+  const [serviceFilter, setServiceFilter] = useState("all");
   const [fuFilter, setFuFilter] = useState<FuFilter>("all");
 
   // Unified follow-up prompt. `applyStatus` also advances the lead's stage.
@@ -70,7 +71,7 @@ export default function Dashboard() {
   }, [params]);
 
   const stageNames = useMemo(() => new Set(stages.map((s) => s.name)), [stages]);
-  const stageColor = (status: string) => stages.find((s) => s.name === status)?.color || "#6B7283";
+  const stageColor = (status: string) => stages.find((s) => s.name === status)?.color || "#5A6473";
   const isNew = (l: Lead) => l.status === "new" || l.status === "New";
 
   // KPI counts
@@ -108,18 +109,18 @@ export default function Dashboard() {
     const term = search.trim().toLowerCase();
     return leads.filter((l) => {
       if (!statusMatch(l)) return false;
-      if (callTypeFilter !== "all" && l.callType !== callTypeFilter) return false;
+      if (serviceFilter !== "all" && l.service !== serviceFilter) return false;
       if (!fuMatch(l)) return false;
       if (term) {
-        const hay = [l.name, l.email, l.phone, l.company, l.problem, l.status, l.callType].join(" ").toLowerCase();
+        const hay = [l.name, l.email, l.phone, l.company, l.problem, l.status, l.service].join(" ").toLowerCase();
         if (!hay.includes(term)) return false;
       }
       return true;
     });
-  }, [leads, search, statusFilter, callTypeFilter, fuFilter, stageNames]);
+  }, [leads, search, statusFilter, serviceFilter, fuFilter, stageNames]);
 
-  const resetFilters = () => { setStatusFilter("all"); setCallTypeFilter("all"); setFuFilter("all"); setSearch(""); };
-  const hasFilters = statusFilter !== "all" || callTypeFilter !== "all" || fuFilter !== "all" || search !== "";
+  const resetFilters = () => { setStatusFilter("all"); setServiceFilter("all"); setFuFilter("all"); setSearch(""); };
+  const hasFilters = statusFilter !== "all" || serviceFilter !== "all" || fuFilter !== "all" || search !== "";
 
   const onStageChange = (lead: Lead, value: string) => {
     if (value === lead.status) return;
@@ -143,24 +144,24 @@ export default function Dashboard() {
   if (loading) return <Loader label="Loading dashboard" sub="Pulling together every lead" />;
 
   const KPIS = [
-    { key: "all", icon: LayoutDashboard, label: "Total leads", value: counts.total, accent: "#13182B", onClick: resetFilters, active: !hasFilters },
-    { key: "new", icon: Inbox, label: "Need triage", value: counts.fresh, accent: "#FF5C49", onClick: () => { resetFilters(); setStatusFilter("new"); }, active: statusFilter === "new" },
-    { key: "pipeline", icon: Layers, label: "In pipeline", value: counts.pipeline, accent: "#2B41E0", onClick: () => { resetFilters(); setStatusFilter("pipeline"); }, active: statusFilter === "pipeline" },
+    { key: "all", icon: LayoutDashboard, label: "Total leads", value: counts.total, accent: "#17222F", onClick: resetFilters, active: !hasFilters },
+    { key: "new", icon: Inbox, label: "Need triage", value: counts.fresh, accent: "#E5322B", onClick: () => { resetFilters(); setStatusFilter("new"); }, active: statusFilter === "new" },
+    { key: "pipeline", icon: Layers, label: "In pipeline", value: counts.pipeline, accent: "#E5322B", onClick: () => { resetFilters(); setStatusFilter("pipeline"); }, active: statusFilter === "pipeline" },
     { key: "due", icon: CalendarClock, label: "Follow-ups due", value: counts.due, accent: "#F59E0B", onClick: () => { resetFilters(); setFuFilter("due"); }, active: fuFilter === "due" },
     { key: "won", icon: UserCheck, label: "Converted", value: counts.converted, accent: "#0F9D6B", onClick: () => { resetFilters(); setStatusFilter(stages[stages.length - 1]?.name || "all"); }, active: statusFilter === stages[stages.length - 1]?.name },
   ];
 
   return (
-    <div className="font-['Poppins',sans-serif]">
+    <div className="font-['Inter',sans-serif]">
       {/* Header */}
       <div className="mb-7 animate-fade-up flex items-start gap-4">
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border bg-[#2B41E0]/[0.08] text-[#2B41E0] border-[#2B41E0]/20"><LayoutDashboard size={22} /></div>
+        <div className="w-12 h-12 rounded-none flex items-center justify-center shrink-0 border bg-[#E5322B]/[0.08] text-[#E5322B] border-[#E5322B]/20"><LayoutDashboard size={22} /></div>
         <div>
-          <div className="font-mono text-[12px] tracking-[0.16em] uppercase font-medium flex items-center gap-2 mb-2 text-[#2B41E0]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#2B41E0]" /> Lead Management
+          <div className="font-mono text-[12px] tracking-[0.16em] uppercase font-medium flex items-center gap-2 mb-2 text-[#E5322B]">
+            <span className="w-1.5 h-1.5 rounded-none bg-[#E5322B]" /> Lead Management
           </div>
-          <h1 className="text-[28px] md:text-[34px] font-bold text-[#13182B] leading-none tracking-tight">Dashboard</h1>
-          <p className="text-[#6B7283] mt-2.5 text-[15px] leading-relaxed max-w-2xl">A single view of every lead. Search, filter, and act — approve, advance a stage, schedule a follow-up, or archive — without leaving this screen.</p>
+          <h1 className="text-[28px] md:text-[34px] font-bold text-[#17222F] leading-none tracking-tight">Dashboard</h1>
+          <p className="text-[#5A6473] mt-2.5 text-[15px] leading-relaxed max-w-2xl">A single view of every lead. Search, filter, and act — approve, advance a stage, schedule a follow-up, or archive — without leaving this screen.</p>
         </div>
       </div>
 
@@ -171,11 +172,11 @@ export default function Dashboard() {
             key={k.key}
             onClick={k.onClick}
             style={{ animationDelay: `${i * 40}ms` }}
-            className={`text-left bg-white border rounded-2xl p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md animate-fade-up ${k.active ? "border-[2px]" : "border-[#E5E2D9]"}`}
+            className={`text-left bg-white border rounded-none p-4 transition-all hover:-translate-y-0.5 hover: animate-fade-up ${k.active ? "border-[2px]" : "border-[#17222F]"}`}
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${k.accent}14`, color: k.accent }}><k.icon size={18} /></div>
-              {k.active && <span className="w-2 h-2 rounded-full" style={{ background: k.accent }} />}
+              <div className="w-9 h-9 rounded-none flex items-center justify-center" style={{ background: `${k.accent}14`, color: k.accent }}><k.icon size={18} /></div>
+              {k.active && <span className="w-2 h-2 rounded-none" style={{ background: k.accent }} />}
             </div>
             <div className="text-[26px] font-bold leading-none tracking-tight" style={{ color: k.accent }}>{k.value}</div>
             <div className="font-mono text-[10.5px] tracking-[0.1em] uppercase text-[#9AA0AD] mt-2">{k.label}</div>
@@ -184,7 +185,7 @@ export default function Dashboard() {
       </div>
 
       {/* Controls */}
-      <div className="bg-white border border-[#D7D3C7] rounded-[20px] p-4 md:p-5 shadow-sm mb-5 animate-fade-up">
+      <div className="bg-white border border-[#17222F] rounded-none p-4 md:p-5 mb-5 animate-fade-up">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
           <div className="relative flex-1">
             <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9AA0AD]" />
@@ -192,7 +193,7 @@ export default function Dashboard() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name, email, phone, company, or problem…"
-              className="w-full pl-10 pr-3 py-3 rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] text-[14.5px] focus:border-[#2B41E0] outline-none"
+              className="w-full pl-10 pr-3 py-3 rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] text-[14.5px] focus:border-[#E5322B] outline-none"
             />
           </div>
           <div className="flex flex-wrap gap-2.5">
@@ -203,10 +204,9 @@ export default function Dashboard() {
               {stages.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
               <option value="Archived">Archived</option>
             </Select>
-            <Select value={callTypeFilter} onChange={setCallTypeFilter}>
-              <option value="all">All call types</option>
-              <option value="clarity">Clarity</option>
-              <option value="technical">Technical</option>
+            <Select value={serviceFilter} onChange={setServiceFilter}>
+              <option value="all">All services</option>
+              {SERVICES.map((s) => <option key={s} value={s}>{s}</option>)}
             </Select>
             <Select value={fuFilter} onChange={(v) => setFuFilter(v as FuFilter)}>
               <option value="all">Any follow-up</option>
@@ -217,7 +217,7 @@ export default function Dashboard() {
               <option value="none">No follow-up</option>
             </Select>
             {hasFilters && (
-              <button onClick={resetFilters} className="flex items-center gap-1.5 px-3.5 py-3 rounded-xl text-[13.5px] font-semibold text-[#6B7283] bg-[#F4F2EC] hover:bg-[#E5E2D9] transition-colors"><X size={15} /> Clear</button>
+              <button onClick={resetFilters} className="flex items-center gap-1.5 px-3.5 py-3 rounded-none text-[13.5px] font-semibold text-[#5A6473] bg-[#F2F2F2] hover:bg-[#17222F] transition-colors"><X size={15} /> Clear</button>
             )}
           </div>
         </div>
@@ -225,42 +225,42 @@ export default function Dashboard() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-[#D7D3C7] rounded-[20px] overflow-x-auto shadow-sm animate-fade-up">
+      <div className="bg-white border border-[#17222F] rounded-none overflow-x-auto animate-fade-up">
         <table className="w-full text-left border-collapse min-w-[960px]">
-          <thead className="bg-[#F4F2EC] text-[12.5px] text-[#6B7283] border-b border-[#E5E2D9]">
+          <thead className="bg-[#F2F2F2] text-[12.5px] text-[#5A6473] border-b border-[#17222F]">
             <tr>
               <th className="p-4 font-semibold">Lead</th>
               <th className="p-4 font-semibold">Company</th>
               <th className="p-4 font-semibold">Stage</th>
-              <th className="p-4 font-semibold">Type</th>
+              <th className="p-4 font-semibold">Service</th>
               <th className="p-4 font-semibold">Follow-up</th>
               <th className="p-4 font-semibold">Added</th>
               <th className="p-4 font-semibold text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E5E2D9]">
+          <tbody className="divide-y divide-[#17222F]">
             {filtered.map((l) => {
               const archived = l.status === "Archived";
               const inStage = stageNames.has(l.status);
               return (
-                <tr key={l.id} className={`hover:bg-[#FCFBF8] transition-colors ${archived ? "opacity-60" : ""}`}>
+                <tr key={l.id} className={`hover:bg-[#FFFFFF] transition-colors ${archived ? "opacity-60" : ""}`}>
                   <td className="p-4 cursor-pointer" onClick={() => setDetail(l)}>
-                    <div className="font-semibold text-[#13182B] text-[14.5px] flex items-center gap-2">
+                    <div className="font-semibold text-[#17222F] text-[14.5px] flex items-center gap-2">
                       {l.name}
-                      {l.source === "manual" && <span className="font-mono text-[9px] uppercase tracking-wider text-[#2B41E0] bg-[#EDEFFF] px-1.5 py-0.5 rounded">manual</span>}
+                      {l.source === "manual" && <span className="font-mono text-[9px] uppercase tracking-wider text-[#E5322B] bg-[#F2F2F2] px-1.5 py-0.5 rounded-none">manual</span>}
                     </div>
-                    <div className="text-[13px] text-[#6B7283] mt-0.5">{l.email}</div>
+                    <div className="text-[13px] text-[#5A6473] mt-0.5">{l.email}</div>
                     {l.phone && l.phone !== "N/A" && <div className="text-[13px] text-[#9AA0AD]">{l.phone}</div>}
                   </td>
-                  <td className="p-4 text-[13.5px] text-[#3A4257]">{l.company && l.company !== "N/A" ? l.company : "—"}</td>
+                  <td className="p-4 text-[13.5px] text-[#2E3744]">{l.company && l.company !== "N/A" ? l.company : "—"}</td>
                   <td className="p-4">
-                    <div className="inline-flex items-center gap-2 rounded-lg border border-[#D7D3C7] bg-[#FCFBF8] pl-2 pr-1 py-1">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: isNew(l) ? "#FF5C49" : archived ? "#9AA0AD" : stageColor(l.status) }} />
+                    <div className="inline-flex items-center gap-2 rounded-none border border-[#17222F] bg-[#FFFFFF] pl-2 pr-1 py-1">
+                      <span className="w-2 h-2 rounded-none shrink-0" style={{ background: isNew(l) ? "#E5322B" : archived ? "#9AA0AD" : stageColor(l.status) }} />
                       <select
                         value={inStage ? l.status : ""}
                         onChange={(e) => onStageChange(l, e.target.value)}
                         disabled={!canWrite}
-                        className="bg-transparent text-[13px] font-semibold text-[#13182B] outline-none cursor-pointer pr-1 disabled:cursor-default"
+                        className="bg-transparent text-[13px] font-semibold text-[#17222F] outline-none cursor-pointer pr-1 disabled:cursor-default"
                       >
                         {!inStage && <option value="" disabled>{isNew(l) ? "New" : l.status}</option>}
                         {stages.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -268,28 +268,28 @@ export default function Dashboard() {
                     </div>
                   </td>
                   <td className="p-4">
-                    <span className="font-mono text-[11px] px-2.5 py-1 rounded-full font-semibold bg-[#EDEFFF] text-[#2B41E0] capitalize">{l.callType || "—"}</span>
+                    <span className="font-mono text-[11px] px-2.5 py-1 rounded-none-none font-semibold bg-[#F2F2F2] text-[#E5322B]">{l.service || "—"}</span>
                   </td>
                   <td className="p-4">
                     {l.followUpDate ? (
-                      <span className={`font-mono text-[11px] px-2.5 py-1.5 rounded-md font-semibold inline-flex items-center gap-1.5 ${isOverdue(l.followUpDate) ? "bg-[#FFEDE9] text-[#FF5C49]" : "bg-[#FFF6E5] text-[#B7791F]"}`}>
+                      <span className={`font-mono text-[11px] px-2.5 py-1.5 rounded-none font-semibold inline-flex items-center gap-1.5 ${isOverdue(l.followUpDate) ? "bg-[#FBE9E7] text-[#E5322B]" : "bg-[#FFF6E5] text-[#B7791F]"}`}>
                         <CalendarClock size={12} /> {relativeDay(l.followUpDate)}
                       </span>
-                    ) : <span className="text-[#C4C0B4] text-[13px]">—</span>}
+                    ) : <span className="text-[#17222F] text-[13px]">—</span>}
                   </td>
-                  <td className="p-4 text-[13px] text-[#6B7283] whitespace-nowrap">{fmtCreated(l.createdAt)}</td>
+                  <td className="p-4 text-[13px] text-[#5A6473] whitespace-nowrap">{fmtCreated(l.createdAt)}</td>
                   <td className="p-4">
                     {canWrite ? (
                       <div className="flex items-center justify-end gap-1.5">
-                        <button title="Schedule follow-up" onClick={() => setPending({ lead: l, stage: l.status, applyStatus: false })} className="w-9 h-9 flex items-center justify-center rounded-lg text-[#B7791F] bg-[#FFF6E5] hover:bg-[#F59E0B] hover:text-white transition-colors"><CalendarClock size={16} /></button>
+                        <button title="Schedule follow-up" onClick={() => setPending({ lead: l, stage: l.status, applyStatus: false })} className="w-9 h-9 flex items-center justify-center rounded-none text-[#B7791F] bg-[#FFF6E5] hover:bg-[#F59E0B] hover:text-white transition-colors"><CalendarClock size={16} /></button>
                         {archived ? (
-                          <button title="Restore lead" onClick={() => restore(l)} className="w-9 h-9 flex items-center justify-center rounded-lg text-[#2B41E0] bg-[#EDEFFF] hover:bg-[#2B41E0] hover:text-white transition-colors"><RotateCcw size={16} /></button>
+                          <button title="Restore lead" onClick={() => restore(l)} className="w-9 h-9 flex items-center justify-center rounded-none text-[#E5322B] bg-[#F2F2F2] hover:bg-[#E5322B] hover:text-white transition-colors"><RotateCcw size={16} /></button>
                         ) : (
-                          <button title="Archive lead" onClick={() => archive(l)} className="w-9 h-9 flex items-center justify-center rounded-lg text-[#9AA0AD] bg-[#F4F2EC] hover:bg-[#FF5C49] hover:text-white transition-colors"><Archive size={16} /></button>
+                          <button title="Archive lead" onClick={() => archive(l)} className="w-9 h-9 flex items-center justify-center rounded-none text-[#9AA0AD] bg-[#F2F2F2] hover:bg-[#E5322B] hover:text-white transition-colors"><Archive size={16} /></button>
                         )}
                       </div>
                     ) : (
-                      <div className="text-right font-mono text-[12px] text-[#C4C0B4] pr-2">view only</div>
+                      <div className="text-right font-mono text-[12px] text-[#17222F] pr-2">view only</div>
                     )}
                   </td>
                 </tr>
@@ -327,14 +327,14 @@ export default function Dashboard() {
 
       {/* Lead detail */}
       {detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#13182B] bg-opacity-40 backdrop-blur-sm animate-fade-in" onClick={() => setDetail(null)}>
-          <div className="bg-white w-full max-w-xl border border-[#D7D3C7] rounded-[24px] shadow-2xl overflow-hidden animate-scale-in max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-5 border-b border-[#E5E2D9] flex justify-between items-center bg-[#FCFBF8]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#17222F] bg-opacity-40 backdrop-blur-sm animate-fade-in" onClick={() => setDetail(null)}>
+          <div className="bg-white w-full max-w-xl border border-[#17222F] rounded-none overflow-hidden animate-scale-in max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-5 border-b border-[#17222F] flex justify-between items-center bg-[#FFFFFF]">
               <div>
                 <div className="font-mono text-[11px] uppercase font-semibold mb-1" style={{ color: stageColor(detail.status) }}>{detail.status}</div>
-                <h2 className="text-[21px] font-bold text-[#13182B] leading-none">{detail.name}</h2>
+                <h2 className="text-[21px] font-bold text-[#17222F] leading-none">{detail.name}</h2>
               </div>
-              <button onClick={() => setDetail(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-[#E5E2D9] text-[#6B7283] hover:bg-[#D7D3C7]"><X size={16} strokeWidth={2.5} /></button>
+              <button onClick={() => setDetail(null)} className="w-8 h-8 flex items-center justify-center rounded-none bg-[#17222F] text-[#5A6473] hover:bg-[#17222F]"><X size={16} strokeWidth={2.5} /></button>
             </div>
             <div className="p-6 overflow-y-auto space-y-5 text-[15px]">
               <div className="grid sm:grid-cols-2 gap-4">
@@ -343,28 +343,28 @@ export default function Dashboard() {
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <Detail label="Company" value={detail.company && detail.company !== "N/A" ? detail.company : "—"} />
-                <Detail label="Call type" value={detail.callType || "—"} />
+                <Detail label="Service" value={detail.service || "—"} />
               </div>
               {detail.stage && <Detail label="Reported stage" value={detail.stage} />}
               {detail.problem && (
                 <div>
                   <div className="font-mono text-[11px] text-[#9AA0AD] uppercase mb-2">The problem</div>
-                  <div className="bg-[#F4F2EC] border border-[#D7D3C7] p-4 rounded-xl text-[#3A4257] leading-relaxed">{detail.problem}</div>
+                  <div className="bg-[#F2F2F2] border border-[#17222F] p-4 rounded-none text-[#2E3744] leading-relaxed">{detail.problem}</div>
                 </div>
               )}
               {detail.followUpDate && (
-                <div className="flex items-start gap-3 bg-[#FFF6E5] border border-[#F59E0B]/30 rounded-xl p-4">
+                <div className="flex items-start gap-3 bg-[#FFF6E5] border border-[#F59E0B]/30 rounded-none p-4">
                   <CalendarClock size={18} className="text-[#B7791F] shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-semibold text-[#13182B] text-[14px]">Follow-up {relativeDay(detail.followUpDate).toLowerCase()}</div>
+                    <div className="font-semibold text-[#17222F] text-[14px]">Follow-up {relativeDay(detail.followUpDate).toLowerCase()}</div>
                     {detail.followUpNote && <div className="text-[13.5px] text-[#8a6420] mt-1 flex items-start gap-1.5"><StickyNote size={13} className="shrink-0 mt-0.5" /> {detail.followUpNote}</div>}
                   </div>
                 </div>
               )}
             </div>
-            <div className="px-6 py-4 border-t border-[#E5E2D9] bg-[#FCFBF8] flex gap-3 justify-end">
-              <button onClick={() => { setPending({ lead: detail, stage: detail.status, applyStatus: false }); setDetail(null); }} className="px-5 py-2.5 rounded-xl font-semibold text-[14px] text-[#B7791F] bg-[#FFF6E5] hover:bg-[#F59E0B] hover:text-white transition-colors flex items-center gap-2"><CalendarClock size={16} /> Follow-up</button>
-              <button onClick={() => setDetail(null)} className="px-5 py-2.5 rounded-xl font-semibold text-[14px] text-white bg-[#13182B] hover:-translate-y-0.5 transition-transform shadow-md">Close</button>
+            <div className="px-6 py-4 border-t border-[#17222F] bg-[#FFFFFF] flex gap-3 justify-end">
+              <button onClick={() => { setPending({ lead: detail, stage: detail.status, applyStatus: false }); setDetail(null); }} className="px-5 py-2.5 rounded-none font-semibold text-[14px] text-[#B7791F] bg-[#FFF6E5] hover:bg-[#F59E0B] hover:text-white transition-colors flex items-center gap-2"><CalendarClock size={16} /> Follow-up</button>
+              <button onClick={() => setDetail(null)} className="px-5 py-2.5 rounded-none font-semibold text-[14px] text-white bg-[#17222F] hover:-translate-y-0.5 transition-transform">Close</button>
             </div>
           </div>
         </div>
@@ -375,7 +375,7 @@ export default function Dashboard() {
 
 function Select({ value, onChange, children }: { value: string; onChange: (v: string) => void; children: React.ReactNode }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="px-3.5 py-3 rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] text-[13.5px] font-medium focus:border-[#2B41E0] outline-none cursor-pointer">
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="px-3.5 py-3 rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] text-[13.5px] font-medium focus:border-[#E5322B] outline-none cursor-pointer">
       {children}
     </select>
   );
@@ -385,7 +385,7 @@ function Detail({ icon: Icon, label, value }: { icon?: React.ComponentType<{ siz
   return (
     <div>
       <div className="font-mono text-[11px] text-[#9AA0AD] uppercase mb-1 flex items-center gap-1.5">{Icon && <Icon size={12} />}{label}</div>
-      <div className="font-medium text-[#13182B] break-words">{value}</div>
+      <div className="font-medium text-[#17222F] break-words">{value}</div>
     </div>
   );
 }

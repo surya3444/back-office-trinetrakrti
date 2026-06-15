@@ -92,29 +92,29 @@ export default function Members() {
   const activeCount = members.filter((m) => !m.disabled).length;
 
   return (
-    <div className="font-['Poppins',sans-serif]">
+    <div className="font-['Inter',sans-serif]">
       <PageHeader
         icon={Users}
         eyebrow="Administration"
-        accent="#2B41E0"
+        accent="#E5322B"
         title="Members"
         subtitle="Invite teammates and assign them a role. New members receive an email to set their own password."
         stats={[
           { label: "Active", value: activeCount, accent: "#0F9D6B" },
-          { label: "Total", value: members.length, accent: "#13182B" },
+          { label: "Total", value: members.length, accent: "#17222F" },
         ]}
         actions={
-          <button onClick={() => { setError(""); setForm({ name: "", email: "", password: "", roleId: roles[0]?.id || "" }); setModal(true); }} className="bg-[#13182B] text-white px-5 py-2.5 rounded-xl font-semibold text-[14.5px] flex items-center gap-2 hover:-translate-y-0.5 transition-transform shadow-md">
+          <button onClick={() => { setError(""); setForm({ name: "", email: "", password: "", roleId: roles[0]?.id || "" }); setModal(true); }} className="bg-[#17222F] text-white px-5 py-2.5 rounded-none font-semibold text-[14.5px] flex items-center gap-2 hover:-translate-y-0.5 transition-transform">
             <UserPlus size={18} /> Add Member
           </button>
         }
       />
 
-      {notice && <div className="mb-5 flex items-center gap-2.5 bg-[#E6F6EF] border border-[#0F9D6B]/30 rounded-xl px-4 py-3 text-[14px] text-[#0b6e4b] animate-fade-up"><CheckCircle2 size={16} /> {notice}</div>}
+      {notice && <div className="mb-5 flex items-center gap-2.5 bg-[#E6F6EF] border border-[#0F9D6B]/30 rounded-none px-4 py-3 text-[14px] text-[#0b6e4b] animate-fade-up"><CheckCircle2 size={16} /> {notice}</div>}
 
-      <div className="bg-white border border-[#D7D3C7] rounded-[20px] overflow-x-auto shadow-sm animate-fade-up">
+      <div className="bg-white border border-[#17222F] rounded-none overflow-x-auto animate-fade-up">
         <table className="w-full text-left border-collapse min-w-[720px]">
-          <thead className="bg-[#F4F2EC] text-[12.5px] text-[#6B7283] border-b border-[#E5E2D9]">
+          <thead className="bg-[#F2F2F2] text-[12.5px] text-[#5A6473] border-b border-[#17222F]">
             <tr>
               <th className="p-4 font-semibold">Member</th>
               <th className="p-4 font-semibold">Role</th>
@@ -122,33 +122,33 @@ export default function Members() {
               <th className="p-4 font-semibold text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E5E2D9]">
+          <tbody className="divide-y divide-[#17222F]">
             {members.map((m) => {
               const self = m.uid === user?.uid;
               return (
-                <tr key={m.uid} className="hover:bg-[#FCFBF8] transition-colors">
+                <tr key={m.uid} className="hover:bg-[#FFFFFF] transition-colors">
                   <td className="p-4">
-                    <div className="font-semibold text-[#13182B] text-[14.5px] flex items-center gap-2">{m.name}{self && <span className="font-mono text-[9px] uppercase tracking-wider text-[#0F9D6B] bg-[#E6F6EF] px-1.5 py-0.5 rounded">you</span>}</div>
-                    <div className="text-[13px] text-[#6B7283]">{m.email}</div>
+                    <div className="font-semibold text-[#17222F] text-[14.5px] flex items-center gap-2">{m.name}{self && <span className="font-mono text-[9px] uppercase tracking-wider text-[#0F9D6B] bg-[#E6F6EF] px-1.5 py-0.5 rounded-none">you</span>}</div>
+                    <div className="text-[13px] text-[#5A6473]">{m.email}</div>
                   </td>
                   <td className="p-4">
-                    <select value={m.roleId || ""} disabled={self} onChange={(e) => changeRole(m, e.target.value)} className="bg-[#FCFBF8] border border-[#D7D3C7] rounded-lg px-3 py-2 text-[13px] font-medium text-[#13182B] outline-none focus:border-[#2B41E0] disabled:opacity-60 cursor-pointer">
+                    <select value={m.roleId || ""} disabled={self} onChange={(e) => changeRole(m, e.target.value)} className="bg-[#FFFFFF] border border-[#17222F] rounded-none px-3 py-2 text-[13px] font-medium text-[#17222F] outline-none focus:border-[#E5322B] disabled:opacity-60 cursor-pointer">
                       <option value="">No role</option>
                       {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </select>
                   </td>
                   <td className="p-4">
-                    <span className={`font-mono text-[11px] px-2.5 py-1 rounded-full font-semibold ${m.disabled ? "bg-[#FFEDE9] text-[#FF5C49]" : "bg-[#E6F6EF] text-[#0F9D6B]"}`}>{m.disabled ? "Disabled" : "Active"}</span>
+                    <span className={`font-mono text-[11px] px-2.5 py-1 rounded-none-none font-semibold ${m.disabled ? "bg-[#FBE9E7] text-[#E5322B]" : "bg-[#E6F6EF] text-[#0F9D6B]"}`}>{m.disabled ? "Disabled" : "Active"}</span>
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-end gap-1.5">
                       {!self && (
                         <>
-                          <button title={m.disabled ? "Enable" : "Disable"} onClick={() => toggleDisabled(m)} className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${m.disabled ? "text-[#0F9D6B] bg-[#E6F6EF] hover:bg-[#0F9D6B] hover:text-white" : "text-[#B7791F] bg-[#FFF6E5] hover:bg-[#F59E0B] hover:text-white"}`}>{m.disabled ? <CheckCircle2 size={16} /> : <Ban size={16} />}</button>
-                          <button title="Remove" onClick={() => removeMember(m)} className="w-9 h-9 flex items-center justify-center rounded-lg text-[#9AA0AD] bg-[#F4F2EC] hover:bg-[#FF5C49] hover:text-white transition-colors"><Trash2 size={16} /></button>
+                          <button title={m.disabled ? "Enable" : "Disable"} onClick={() => toggleDisabled(m)} className={`w-9 h-9 flex items-center justify-center rounded-none transition-colors ${m.disabled ? "text-[#0F9D6B] bg-[#E6F6EF] hover:bg-[#0F9D6B] hover:text-white" : "text-[#B7791F] bg-[#FFF6E5] hover:bg-[#F59E0B] hover:text-white"}`}>{m.disabled ? <CheckCircle2 size={16} /> : <Ban size={16} />}</button>
+                          <button title="Remove" onClick={() => removeMember(m)} className="w-9 h-9 flex items-center justify-center rounded-none text-[#9AA0AD] bg-[#F2F2F2] hover:bg-[#E5322B] hover:text-white transition-colors"><Trash2 size={16} /></button>
                         </>
                       )}
-                      {self && <span className="text-[12px] text-[#C4C0B4] font-mono pr-2">—</span>}
+                      {self && <span className="text-[12px] text-[#17222F] font-mono pr-2">—</span>}
                     </div>
                   </td>
                 </tr>
@@ -160,45 +160,45 @@ export default function Members() {
       </div>
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#13182B] bg-opacity-40 backdrop-blur-sm overflow-y-auto animate-fade-in">
-          <form onSubmit={createMember} className="bg-white w-full max-w-md border border-[#D7D3C7] rounded-[24px] shadow-2xl overflow-hidden my-8 animate-scale-in">
-            <div className="px-6 py-5 border-b border-[#E5E2D9] flex justify-between items-center bg-[#FCFBF8]">
-              <h2 className="text-[20px] font-bold text-[#13182B]">Add member</h2>
-              <button type="button" onClick={() => setModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-[#E5E2D9] text-[#6B7283] hover:bg-[#D7D3C7]"><X size={16} strokeWidth={2.5} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#17222F] bg-opacity-40 backdrop-blur-sm overflow-y-auto animate-fade-in">
+          <form onSubmit={createMember} className="bg-white w-full max-w-md border border-[#17222F] rounded-none overflow-hidden my-8 animate-scale-in">
+            <div className="px-6 py-5 border-b border-[#17222F] flex justify-between items-center bg-[#FFFFFF]">
+              <h2 className="text-[20px] font-bold text-[#17222F]">Add member</h2>
+              <button type="button" onClick={() => setModal(false)} className="w-8 h-8 flex items-center justify-center rounded-none bg-[#17222F] text-[#5A6473] hover:bg-[#17222F]"><X size={16} strokeWidth={2.5} /></button>
             </div>
             <div className="p-6 space-y-4">
-              {error && <div className="bg-[#FFEDE9] text-[#b23a2c] text-[13.5px] rounded-lg px-3.5 py-2.5">{error}</div>}
+              {error && <div className="bg-[#FBE9E7] text-[#b23a2c] text-[13.5px] rounded-none px-3.5 py-2.5">{error}</div>}
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Full name</label>
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] focus:border-[#2B41E0] outline-none" />
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Full name</label>
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] focus:border-[#E5322B] outline-none" />
               </div>
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Email <span className="text-[#FF5C49]">*</span></label>
-                <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] focus:border-[#2B41E0] outline-none" />
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Email <span className="text-[#E5322B]">*</span></label>
+                <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] focus:border-[#E5322B] outline-none" />
               </div>
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Temporary password <span className="text-[#FF5C49]">*</span></label>
-                <input type="text" required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="At least 6 characters" className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] focus:border-[#2B41E0] outline-none" />
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Temporary password <span className="text-[#E5322B]">*</span></label>
+                <input type="text" required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="At least 6 characters" className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] focus:border-[#E5322B] outline-none" />
                 <p className="text-[12px] text-[#9AA0AD] mt-1.5 flex items-center gap-1.5"><Mail size={12} /> They'll get an email to set their own password.</p>
               </div>
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Role</label>
-                <select value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })} className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] focus:border-[#2B41E0] outline-none appearance-none">
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Role</label>
+                <select value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })} className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] focus:border-[#E5322B] outline-none appearance-none">
                   <option value="">No role (no access)</option>
                   {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-[#E5E2D9] bg-[#FCFBF8] flex gap-3 justify-end">
-              <button type="button" onClick={() => setModal(false)} className="px-5 py-2.5 rounded-xl font-semibold text-[14px] text-[#6B7283] bg-[#F4F2EC] hover:bg-[#E5E2D9] transition-colors">Cancel</button>
-              <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl font-semibold text-[14px] text-white bg-[#13182B] hover:-translate-y-0.5 transition-transform shadow-md disabled:opacity-60 flex items-center gap-2"><UserPlus size={16} /> {saving ? "Creating…" : "Create member"}</button>
+            <div className="px-6 py-4 border-t border-[#17222F] bg-[#FFFFFF] flex gap-3 justify-end">
+              <button type="button" onClick={() => setModal(false)} className="px-5 py-2.5 rounded-none font-semibold text-[14px] text-[#5A6473] bg-[#F2F2F2] hover:bg-[#17222F] transition-colors">Cancel</button>
+              <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-none font-semibold text-[14px] text-white bg-[#17222F] hover:-translate-y-0.5 transition-transform disabled:opacity-60 flex items-center gap-2"><UserPlus size={16} /> {saving ? "Creating…" : "Create member"}</button>
             </div>
           </form>
         </div>
       )}
 
       {roles.length === 0 && (
-        <p className="mt-5 text-[13.5px] text-[#9AA0AD]">Tip: create a role on the <strong className="text-[#6B7283]">Roles</strong> screen first, then assign it here.</p>
+        <p className="mt-5 text-[13.5px] text-[#9AA0AD]">Tip: create a role on the <strong className="text-[#5A6473]">Roles</strong> screen first, then assign it here.</p>
       )}
     </div>
   );

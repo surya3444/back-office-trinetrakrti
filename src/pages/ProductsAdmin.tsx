@@ -63,17 +63,17 @@ export default function ProductsAdmin() {
   if (loading) return <Loader label="Loading products" sub="Fetching your storefront" />;
 
   return (
-    <div className="font-['Poppins',sans-serif] relative">
+    <div className="font-['Inter',sans-serif] relative">
       <div className="flex justify-between items-end mb-8">
         <div>
-          <div className="font-mono text-[12px] text-[#2B41E0] tracking-[0.16em] uppercase font-medium flex items-center gap-2 mb-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#2B41E0]"></span>
+          <div className="font-mono text-[12px] text-[#E5322B] tracking-[0.16em] uppercase font-medium flex items-center gap-2 mb-2">
+            <span className="w-1.5 h-1.5 rounded-none bg-[#E5322B]"></span>
             Storefront
           </div>
-          <h1 className="text-[32px] font-bold text-[#13182B] leading-none tracking-tight">Products</h1>
+          <h1 className="text-[32px] font-bold text-[#17222F] leading-none tracking-tight">Products</h1>
         </div>
         {canWrite && (
-          <button onClick={() => setShowModal(true)} className="bg-[#13182B] text-white px-5 py-2.5 rounded-xl font-semibold text-[14.5px] flex items-center gap-2 hover:-translate-y-0.5 transition-transform shadow-md">
+          <button onClick={() => setShowModal(true)} className="bg-[#17222F] text-white px-5 py-2.5 rounded-none font-semibold text-[14.5px] flex items-center gap-2 hover:-translate-y-0.5 transition-transform">
             <Plus size={18} /> Add Product
           </button>
         )}
@@ -81,40 +81,40 @@ export default function ProductsAdmin() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((p) => (
-          <div key={p.id} className="bg-[#FFFFFF] border border-[#D7D3C7] rounded-[20px] p-6 hover:border-[#2B41E0] transition-colors shadow-sm flex flex-col">
+          <div key={p.id} className="bg-[#FFFFFF] border border-[#17222F] rounded-none p-6 hover:border-[#E5322B] transition-colors flex flex-col">
             
             {/* Display Image Preview in Admin */}
             {p.imageUrl ? (
-              <div className="w-full h-36 mb-5 rounded-xl overflow-hidden border border-[#E5E2D9]">
+              <div className="w-full h-36 mb-5 rounded-none overflow-hidden border border-[#17222F]">
                 <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" />
               </div>
             ) : (
-              <div className="w-full h-36 mb-5 rounded-xl bg-[#F4F2EC] border border-[#E5E2D9] flex items-center justify-center text-[#9AA0AD]">
+              <div className="w-full h-36 mb-5 rounded-none bg-[#F2F2F2] border border-[#17222F] flex items-center justify-center text-[#9AA0AD]">
                 <ImageIcon size={32} opacity={0.5} />
               </div>
             )}
 
             <div className="flex justify-between items-start mb-4">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="bg-[#EDEFFF] text-[#2B41E0] font-mono text-[11px] px-2.5 py-1 rounded-md uppercase tracking-wider font-semibold">
+                <span className="bg-[#F2F2F2] text-[#E5322B] font-mono text-[11px] px-2.5 py-1 rounded-none-none uppercase tracking-wider font-semibold">
                   {p.tag}
                 </span>
-                <span className={`font-mono text-[11px] px-2.5 py-1 rounded-md uppercase tracking-wider font-semibold inline-flex items-center gap-1.5 ${
+                <span className={`font-mono text-[11px] px-2.5 py-1 rounded-none-none uppercase tracking-wider font-semibold inline-flex items-center gap-1.5 ${
                   p.status === "Ongoing" ? "bg-[#FFF6E5] text-[#B7791F]" : "bg-[#E6F6EF] text-[#0F9D6B]"
                 }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${p.status === "Ongoing" ? "bg-[#F59E0B]" : "bg-[#0F9D6B] animate-pulse"}`} />
+                  <span className={`w-1.5 h-1.5 rounded-none ${p.status === "Ongoing" ? "bg-[#F59E0B]" : "bg-[#0F9D6B] animate-pulse"}`} />
                   {p.status || "Live"}
                 </span>
               </div>
               {canWrite && (
-                <button onClick={() => handleDelete(p.id)} className="text-[#9AA0AD] hover:text-[#FF5C49] transition-colors p-1">
+                <button onClick={() => handleDelete(p.id)} className="text-[#9AA0AD] hover:text-[#E5322B] transition-colors p-1">
                   <Trash2 size={16} />
                 </button>
               )}
             </div>
-            <h3 className="font-bold text-[#13182B] text-[19px] mb-2">{p.title}</h3>
-            <p className="text-[#6B7283] text-[14.5px] mb-6 flex-1 line-clamp-3">{p.description}</p>
-            <a href={p.link} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#2B41E0] text-[14px] font-semibold hover:underline">
+            <h3 className="font-bold text-[#17222F] text-[19px] mb-2">{p.title}</h3>
+            <p className="text-[#5A6473] text-[14.5px] mb-6 flex-1 line-clamp-3">{p.description}</p>
+            <a href={p.link} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#E5322B] text-[14px] font-semibold hover:underline">
               View Link <ExternalLink size={14} />
             </a>
           </div>
@@ -122,11 +122,11 @@ export default function ProductsAdmin() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#13182B] bg-opacity-40 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-[#FFFFFF] w-full max-w-md border border-[#D7D3C7] rounded-[24px] shadow-xl overflow-hidden flex flex-col my-8">
-            <div className="px-8 py-6 border-b border-[#E5E2D9] flex justify-between items-center bg-[#FCFBF8]">
-              <h2 className="text-[22px] font-bold text-[#13182B] leading-none">Add Product</h2>
-              <button onClick={() => setShowModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-[#E5E2D9] text-[#6B7283] hover:bg-[#D7D3C7]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#17222F] bg-opacity-40 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-[#FFFFFF] w-full max-w-md border border-[#17222F] rounded-none overflow-hidden flex flex-col my-8">
+            <div className="px-8 py-6 border-b border-[#17222F] flex justify-between items-center bg-[#FFFFFF]">
+              <h2 className="text-[22px] font-bold text-[#17222F] leading-none">Add Product</h2>
+              <button onClick={() => setShowModal(false)} className="w-8 h-8 flex items-center justify-center rounded-none bg-[#17222F] text-[#5A6473] hover:bg-[#17222F]">
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
@@ -134,27 +134,27 @@ export default function ProductsAdmin() {
               
               {/* Image Preview inside Modal */}
               {newProduct.imageUrl && (
-                <div className="w-full h-32 rounded-xl overflow-hidden border border-[#E5E2D9]">
+                <div className="w-full h-32 rounded-none overflow-hidden border border-[#17222F]">
                   <img src={newProduct.imageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
                 </div>
               )}
 
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Image URL</label>
-                <input type="url" value={newProduct.imageUrl} onChange={(e) => setNewProduct({...newProduct, imageUrl: e.target.value})} placeholder="https://example.com/image.png" className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] focus:border-[#2B41E0] outline-none" />
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Image URL</label>
+                <input type="url" value={newProduct.imageUrl} onChange={(e) => setNewProduct({...newProduct, imageUrl: e.target.value})} placeholder="https://example.com/image.png" className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] focus:border-[#E5322B] outline-none" />
               </div>
 
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Product Title</label>
-                <input type="text" value={newProduct.title} onChange={(e) => setNewProduct({...newProduct, title: e.target.value})} required className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] focus:border-[#2B41E0] outline-none" />
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Product Title</label>
+                <input type="text" value={newProduct.title} onChange={(e) => setNewProduct({...newProduct, title: e.target.value})} required className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] focus:border-[#E5322B] outline-none" />
               </div>
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Tag / Category</label>
-                <input type="text" value={newProduct.tag} onChange={(e) => setNewProduct({...newProduct, tag: e.target.value})} placeholder="e.g. SaaS, Template, Toolkit" required className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] focus:border-[#2B41E0] outline-none" />
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Tag / Category</label>
+                <input type="text" value={newProduct.tag} onChange={(e) => setNewProduct({...newProduct, tag: e.target.value})} placeholder="e.g. SaaS, Template, Toolkit" required className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] focus:border-[#E5322B] outline-none" />
               </div>
 
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Status</label>
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Status</label>
                 <div className="grid grid-cols-2 gap-2">
                   {([
                     { value: "Live", desc: "Shipped & available", color: "#0F9D6B", wash: "#E6F6EF" },
@@ -163,10 +163,10 @@ export default function ProductsAdmin() {
                     const active = newProduct.status === opt.value;
                     return (
                       <button type="button" key={opt.value} onClick={() => setNewProduct({ ...newProduct, status: opt.value })}
-                        className="text-left px-3.5 py-2.5 rounded-xl border transition-colors"
-                        style={{ borderColor: active ? opt.color : "#D7D3C7", background: active ? opt.wash : "#FCFBF8" }}>
-                        <div className="font-semibold text-[14px] flex items-center gap-2" style={{ color: active ? opt.color : "#13182B" }}>
-                          <span className="w-2 h-2 rounded-full" style={{ background: opt.color }} /> {opt.value}
+                        className="text-left px-3.5 py-2.5 rounded-none border transition-colors"
+                        style={{ borderColor: active ? opt.color : "#17222F", background: active ? opt.wash : "#FFFFFF" }}>
+                        <div className="font-semibold text-[14px] flex items-center gap-2" style={{ color: active ? opt.color : "#17222F" }}>
+                          <span className="w-2 h-2 rounded-none" style={{ background: opt.color }} /> {opt.value}
                         </div>
                         <div className="text-[12px] text-[#9AA0AD] mt-0.5">{opt.desc}</div>
                       </button>
@@ -175,14 +175,14 @@ export default function ProductsAdmin() {
                 </div>
               </div>
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Description</label>
-                <textarea value={newProduct.description} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})} required rows={3} className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] focus:border-[#2B41E0] outline-none" />
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Description</label>
+                <textarea value={newProduct.description} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})} required rows={3} className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] focus:border-[#E5322B] outline-none" />
               </div>
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">External Link (URL)</label>
-                <input type="url" value={newProduct.link} onChange={(e) => setNewProduct({...newProduct, link: e.target.value})} placeholder="https://" required className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] focus:border-[#2B41E0] outline-none" />
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">External Link (URL)</label>
+                <input type="url" value={newProduct.link} onChange={(e) => setNewProduct({...newProduct, link: e.target.value})} placeholder="https://" required className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] focus:border-[#E5322B] outline-none" />
               </div>
-              <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#13182B] text-white font-semibold py-[15px] rounded-xl hover:-translate-y-[2px] transition-transform disabled:opacity-70">
+              <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#17222F] text-white font-semibold py-[15px] rounded-none hover:-translate-y-[2px] transition-transform disabled:opacity-70">
                 {isSubmitting ? "Saving..." : "Publish Product"}
               </button>
             </form>

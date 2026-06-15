@@ -9,6 +9,7 @@ import { NotePromptModal } from "./NotePromptModal";
 import { advanceLeadStatus, leadNote, type LeadNote } from "../lib/leads";
 import { logAction } from "../lib/audit";
 import { relativeDay, isOverdue } from "../lib/dates";
+import { SERVICES } from "../lib/services";
 
 export interface DrawerLead {
   id: string;
@@ -17,7 +18,7 @@ export interface DrawerLead {
   phone?: string;
   company?: string;
   problem?: string;
-  callType?: string;
+  service?: string;
   stage?: string;
   status: string;
   source?: string;
@@ -43,7 +44,7 @@ function timeAgo(ts: any): string {
 
 function noteMeta(n: LeadNote): { icon: any; color: string; label: string } {
   switch (n.type) {
-    case "stage": return { icon: ArrowRightCircle, color: "#2B41E0", label: n.stage ? `moved to ${n.stage}` : "moved stage" };
+    case "stage": return { icon: ArrowRightCircle, color: "#E5322B", label: n.stage ? `moved to ${n.stage}` : "moved stage" };
     case "followup": return { icon: CalendarClock, color: "#B7791F", label: n.date ? `set a follow-up for ${relativeDay(n.date).toLowerCase()}` : "set a follow-up" };
     case "done": return { icon: CheckCircle2, color: "#0F9D6B", label: "completed the follow-up" };
     case "edit": return { icon: Pencil, color: "#9AA0AD", label: "edited the details" };
@@ -53,7 +54,7 @@ function noteMeta(n: LeadNote): { icon: any; color: string; label: string } {
 
 export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLead; stages: PipelineStage[]; canWrite: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<"details" | "activity">("details");
-  const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", callType: "clarity", problem: "" });
+  const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", service: "", problem: "" });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [pendingFU, setPendingFU] = useState<{ stage: string; applyStatus: boolean } | null>(null);
@@ -63,7 +64,7 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
   // Timeline of stage notes & follow-ups, newest first (lives on the lead doc).
   const timeline = [...(lead.notes || [])].sort((a, b) => (b.at || 0) - (a.at || 0));
 
-  const stageColor = (s: string) => stages.find((x) => x.name === s)?.color || "#6B7283";
+  const stageColor = (s: string) => stages.find((x) => x.name === s)?.color || "#5A6473";
   const stageNames = new Set(stages.map((s) => s.name));
   const archived = lead.status === "Archived";
   const inStage = stageNames.has(lead.status);
@@ -73,7 +74,7 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
     setForm({
       name: lead.name || "", company: lead.company && lead.company !== "N/A" ? lead.company : "",
       email: lead.email || "", phone: lead.phone && lead.phone !== "N/A" ? lead.phone : "",
-      callType: lead.callType || "clarity", problem: lead.problem || "",
+      service: lead.service || "", problem: lead.problem || "",
     });
     setSaved(false); setTab("details");
   }, [lead.id]);
@@ -83,7 +84,7 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
     try {
       await updateDoc(doc(db, "bookings", lead.id), {
         name: form.name, company: form.company || "N/A", email: form.email,
-        phone: form.phone || "N/A", callType: form.callType, problem: form.problem,
+        phone: form.phone || "N/A", service: form.service, problem: form.problem,
         notes: arrayUnion(leadNote("edit", { text: "Updated lead details" })),
       });
       await logAction("Edited lead details", form.name, lead.id);
@@ -116,32 +117,32 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
   const creator = lead.createdByName || (lead.source === "manual" ? "Team" : "Website form");
 
   return (
-    <div className="fixed inset-0 z-[60] flex justify-end font-['Poppins',sans-serif]">
-      <div className="absolute inset-0 bg-[#13182B]/40 backdrop-blur-sm animate-fade-in" onClick={onClose} />
+    <div className="fixed inset-0 z-[60] flex justify-end font-['Inter',sans-serif]">
+      <div className="absolute inset-0 bg-[#17222F]/40 backdrop-blur-sm animate-fade-in" onClick={onClose} />
 
-      <aside className="relative w-full max-w-[460px] h-full bg-[#FCFBF8] shadow-2xl flex flex-col" style={{ animation: "ol-slidein .28s cubic-bezier(.2,.7,.2,1)" }}>
+      <aside className="relative w-full max-w-[460px] h-full bg-[#FFFFFF] flex flex-col" style={{ animation: "ol-slidein .28s cubic-bezier(.2,.7,.2,1)" }}>
         <style>{`@keyframes ol-slidein{from{transform:translateX(24px);opacity:.4}to{transform:translateX(0);opacity:1}}`}</style>
 
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-[#E9E6DD] bg-white">
+        <div className="px-6 pt-6 pb-4 border-b border-[#17222F] bg-white">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-11 h-11 rounded-xl text-white flex items-center justify-center font-bold text-[18px] shrink-0" style={{ background: archived ? "#9AA0AD" : stageColor(lead.status) }}>{(lead.name || "?").charAt(0).toUpperCase()}</div>
+              <div className="w-11 h-11 rounded-none text-white flex items-center justify-center font-bold text-[18px] shrink-0" style={{ background: archived ? "#9AA0AD" : stageColor(lead.status) }}>{(lead.name || "?").charAt(0).toUpperCase()}</div>
               <div className="min-w-0">
-                <h2 className="text-[19px] font-bold text-[#13182B] leading-tight truncate">{lead.name}</h2>
+                <h2 className="text-[19px] font-bold text-[#17222F] leading-tight truncate">{lead.name}</h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="font-mono text-[11px] px-2 py-0.5 rounded-full font-semibold" style={{ background: `${stageColor(lead.status)}1a`, color: stageColor(lead.status) }}>{lead.status}</span>
-                  {lead.source === "manual" && <span className="font-mono text-[10px] uppercase tracking-wider text-[#2B41E0] bg-[#EDEFFF] px-1.5 py-0.5 rounded">manual</span>}
+                  <span className="font-mono text-[11px] px-2 py-0.5 rounded-none font-semibold" style={{ background: `${stageColor(lead.status)}1a`, color: stageColor(lead.status) }}>{lead.status}</span>
+                  {lead.source === "manual" && <span className="font-mono text-[10px] uppercase tracking-wider text-[#E5322B] bg-[#F2F2F2] px-1.5 py-0.5 rounded-none">manual</span>}
                 </div>
               </div>
             </div>
-            <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-[#F4F2EC] text-[#6B7283] hover:bg-[#E5E2D9] shrink-0"><X size={18} strokeWidth={2.5} /></button>
+            <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-none bg-[#F2F2F2] text-[#5A6473] hover:bg-[#17222F] shrink-0"><X size={18} strokeWidth={2.5} /></button>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 mt-5 -mb-4 bg-[#F4F2EC] p-1 rounded-xl w-fit">
+          <div className="flex gap-1 mt-5 -mb-4 bg-[#F2F2F2] p-1 rounded-none w-fit">
             {(["details", "activity"] as const).map((t) => (
-              <button key={t} onClick={() => setTab(t)} className={`px-4 py-1.5 rounded-lg text-[13px] font-semibold capitalize transition-colors ${tab === t ? "bg-white text-[#13182B] shadow-sm" : "text-[#6B7283] hover:text-[#13182B]"}`}>
+              <button key={t} onClick={() => setTab(t)} className={`px-4 py-1.5 rounded-none text-[13px] font-semibold capitalize transition-colors ${tab === t ? "bg-white text-[#17222F]" : "text-[#5A6473] hover:text-[#17222F]"}`}>
                 {t === "activity" ? `Timeline${timeline.length ? ` (${timeline.length})` : ""}` : "Details"}
               </button>
             ))}
@@ -156,9 +157,9 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
               <div>
                 <Label>Stage</Label>
                 {canWrite && !archived ? (
-                  <div className="flex items-center gap-2 rounded-xl border border-[#D7D3C7] bg-white pl-3 pr-1 py-2 w-fit">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: stageColor(lead.status) }} />
-                    <select value={inStage ? lead.status : ""} onChange={(e) => onStageChange(e.target.value)} className="bg-transparent text-[14px] font-semibold text-[#13182B] outline-none cursor-pointer pr-1">
+                  <div className="flex items-center gap-2 rounded-none border border-[#17222F] bg-white pl-3 pr-1 py-2 w-fit">
+                    <span className="w-2.5 h-2.5 rounded-none" style={{ background: stageColor(lead.status) }} />
+                    <select value={inStage ? lead.status : ""} onChange={(e) => onStageChange(e.target.value)} className="bg-transparent text-[14px] font-semibold text-[#17222F] outline-none cursor-pointer pr-1">
                       {!inStage && <option value="" disabled>{lead.status}</option>}
                       {stages.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
                       <option value="Archived">Archive…</option>
@@ -171,25 +172,25 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
 
               {/* Follow-up summary */}
               {lead.followUpDate && (
-                <div className="flex items-start gap-3 bg-[#FFF6E5] border border-[#F59E0B]/30 rounded-xl p-3.5">
+                <div className="flex items-start gap-3 bg-[#FFF6E5] border border-[#F59E0B]/30 rounded-none p-3.5">
                   <CalendarClock size={18} className="text-[#B7791F] shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
-                    <div className={`font-semibold text-[13.5px] ${isOverdue(lead.followUpDate) ? "text-[#FF5C49]" : "text-[#13182B]"}`}>Follow-up {relativeDay(lead.followUpDate).toLowerCase()}</div>
+                    <div className={`font-semibold text-[13.5px] ${isOverdue(lead.followUpDate) ? "text-[#E5322B]" : "text-[#17222F]"}`}>Follow-up {relativeDay(lead.followUpDate).toLowerCase()}</div>
                     {lead.followUpNote && <div className="text-[13px] text-[#8a6420] mt-1 flex gap-1.5"><StickyNote size={13} className="shrink-0 mt-0.5" /> {lead.followUpNote}</div>}
                   </div>
                   {canWrite && (
-                    <button onClick={() => setCompleting(true)} className="shrink-0 flex items-center gap-1.5 text-[12.5px] font-semibold text-[#0F9D6B] bg-white border border-[#0F9D6B]/30 px-2.5 py-1.5 rounded-lg hover:bg-[#0F9D6B] hover:text-white transition-colors"><CheckCircle2 size={14} /> Done</button>
+                    <button onClick={() => setCompleting(true)} className="shrink-0 flex items-center gap-1.5 text-[12.5px] font-semibold text-[#0F9D6B] bg-white border border-[#0F9D6B]/30 px-2.5 py-1.5 rounded-none hover:bg-[#0F9D6B] hover:text-white transition-colors"><CheckCircle2 size={14} /> Done</button>
                   )}
                 </div>
               )}
 
               {/* Latest stage note */}
               {lead.lastStageNote && (
-                <div className="flex items-start gap-3 bg-[#F4F2EC] border border-[#E5E2D9] rounded-xl p-3.5">
+                <div className="flex items-start gap-3 bg-[#F2F2F2] border border-[#17222F] rounded-none p-3.5">
                   <StickyNote size={17} className="text-[#9AA0AD] shrink-0 mt-0.5" />
                   <div className="min-w-0">
                     <div className="font-mono text-[10.5px] text-[#9AA0AD] uppercase tracking-wider">Latest note</div>
-                    <div className="text-[13.5px] text-[#3A4257] mt-0.5 leading-relaxed">{lead.lastStageNote}</div>
+                    <div className="text-[13.5px] text-[#2E3744] mt-0.5 leading-relaxed">{lead.lastStageNote}</div>
                   </div>
                 </div>
               )}
@@ -201,15 +202,15 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
                 <Field label="Email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} disabled={!canWrite} icon={Mail} />
                 <Field label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} disabled={!canWrite} icon={Phone} />
                 <div>
-                  <Label>Call type</Label>
-                  <select value={form.callType} disabled={!canWrite} onChange={(e) => setForm({ ...form, callType: e.target.value })} className="w-full px-[14px] py-[11px] rounded-xl border border-[#D7D3C7] bg-white text-[#13182B] text-[14px] focus:border-[#2B41E0] outline-none disabled:bg-[#F7F5EF] capitalize">
-                    <option value="clarity">Clarity</option>
-                    <option value="technical">Technical</option>
+                  <Label>Service</Label>
+                  <select value={form.service} disabled={!canWrite} onChange={(e) => setForm({ ...form, service: e.target.value })} className="w-full px-[14px] py-[11px] rounded-none border border-[#17222F] bg-white text-[#17222F] text-[14px] focus:border-[#E5322B] outline-none disabled:bg-[#F2F2F2]">
+                    <option value="">— Select a service —</option>
+                    {SERVICES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
                   <Label>What they need</Label>
-                  <textarea value={form.problem} disabled={!canWrite} onChange={(e) => setForm({ ...form, problem: e.target.value })} rows={4} className="w-full px-[14px] py-[11px] rounded-xl border border-[#D7D3C7] bg-white text-[#13182B] text-[14px] focus:border-[#2B41E0] outline-none resize-none leading-relaxed disabled:bg-[#F7F5EF]" />
+                  <textarea value={form.problem} disabled={!canWrite} onChange={(e) => setForm({ ...form, problem: e.target.value })} rows={4} className="w-full px-[14px] py-[11px] rounded-none border border-[#17222F] bg-white text-[#17222F] text-[14px] focus:border-[#E5322B] outline-none resize-none leading-relaxed disabled:bg-[#F2F2F2]" />
                 </div>
               </div>
 
@@ -224,12 +225,12 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
               {timeline.length === 0 ? (
                 <div className="text-center py-14 text-[#9AA0AD]">
                   <Clock size={28} className="mx-auto mb-3 opacity-50" />
-                  <p className="text-[14px] font-medium text-[#6B7283]">No notes yet</p>
+                  <p className="text-[14px] font-medium text-[#5A6473]">No notes yet</p>
                   <p className="text-[13px]">Stage notes & follow-ups will appear here.</p>
                 </div>
               ) : (
                 <>
-                  <div className="flex items-start gap-2 bg-[#EDEFFF] text-[#3a4a9e] rounded-xl px-3.5 py-2.5 text-[12.5px] mb-4">
+                  <div className="flex items-start gap-2 bg-[#F2F2F2] text-[#B23A2C] rounded-none px-3.5 py-2.5 text-[12.5px] mb-4">
                     <Info size={15} className="shrink-0 mt-0.5" /> Notes & follow-ups recorded before this feature won't appear here.
                   </div>
                   <ul className="relative">
@@ -237,10 +238,10 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
                       const meta = noteMeta(n);
                       return (
                         <li key={i} className="relative pl-7 pb-5 last:pb-0">
-                          {i < timeline.length - 1 && <span className="absolute left-[9px] top-6 bottom-0 w-px bg-[#E5E2D9]" />}
-                          <span className="absolute left-0 top-0.5 w-[19px] h-[19px] rounded-full flex items-center justify-center" style={{ background: `${meta.color}1f`, color: meta.color }}><meta.icon size={12} /></span>
-                          <div className="text-[13.5px] text-[#13182B] leading-snug"><span className="font-semibold">{n.author}</span> <span className="text-[#3A4257]">{meta.label}</span></div>
-                          {n.text && <div className="text-[13px] text-[#5b6472] mt-1.5 bg-[#F4F2EC] rounded-lg px-2.5 py-1.5 leading-relaxed">{n.text}</div>}
+                          {i < timeline.length - 1 && <span className="absolute left-[9px] top-6 bottom-0 w-px bg-[#17222F]" />}
+                          <span className="absolute left-0 top-0.5 w-[19px] h-[19px] rounded-none flex items-center justify-center" style={{ background: `${meta.color}1f`, color: meta.color }}><meta.icon size={12} /></span>
+                          <div className="text-[13.5px] text-[#17222F] leading-snug"><span className="font-semibold">{n.author}</span> <span className="text-[#2E3744]">{meta.label}</span></div>
+                          {n.text && <div className="text-[13px] text-[#5A6473] mt-1.5 bg-[#F2F2F2] rounded-none px-2.5 py-1.5 leading-relaxed">{n.text}</div>}
                           <div className="font-mono text-[11px] text-[#9AA0AD] mt-1">{timeAgo(n.at)}</div>
                         </li>
                       );
@@ -254,14 +255,14 @@ export function LeadDrawer({ lead, stages, canWrite, onClose }: { lead: DrawerLe
 
         {/* Footer actions */}
         {canWrite && tab === "details" && (
-          <div className="px-6 py-4 border-t border-[#E9E6DD] bg-white flex items-center gap-3">
-            <button onClick={saveDetails} disabled={saving} className="bg-[#13182B] text-white px-5 py-2.5 rounded-xl font-semibold text-[14px] flex items-center gap-2 shadow-md hover:-translate-y-0.5 transition-transform disabled:opacity-60"><Save size={16} /> {saving ? "Saving…" : "Save"}</button>
-            <button onClick={() => setPendingFU({ stage: lead.status, applyStatus: false })} className="px-4 py-2.5 rounded-xl font-semibold text-[14px] text-[#B7791F] bg-[#FFF6E5] hover:bg-[#F59E0B] hover:text-white transition-colors flex items-center gap-2"><CalendarClock size={16} /> Follow-up</button>
+          <div className="px-6 py-4 border-t border-[#17222F] bg-white flex items-center gap-3">
+            <button onClick={saveDetails} disabled={saving} className="bg-[#17222F] text-white px-5 py-2.5 rounded-none font-semibold text-[14px] flex items-center gap-2 hover:-translate-y-0.5 transition-transform disabled:opacity-60"><Save size={16} /> {saving ? "Saving…" : "Save"}</button>
+            <button onClick={() => setPendingFU({ stage: lead.status, applyStatus: false })} className="px-4 py-2.5 rounded-none font-semibold text-[14px] text-[#B7791F] bg-[#FFF6E5] hover:bg-[#F59E0B] hover:text-white transition-colors flex items-center gap-2"><CalendarClock size={16} /> Follow-up</button>
             <div className="ml-auto">
               {archived ? (
-                <button onClick={restore} title="Restore" className="w-10 h-10 flex items-center justify-center rounded-xl text-[#2B41E0] bg-[#EDEFFF] hover:bg-[#2B41E0] hover:text-white transition-colors"><RotateCcw size={17} /></button>
+                <button onClick={restore} title="Restore" className="w-10 h-10 flex items-center justify-center rounded-none text-[#E5322B] bg-[#F2F2F2] hover:bg-[#E5322B] hover:text-white transition-colors"><RotateCcw size={17} /></button>
               ) : (
-                <button onClick={() => onStageChange("Archived")} title="Archive" className="w-10 h-10 flex items-center justify-center rounded-xl text-[#9AA0AD] bg-[#F4F2EC] hover:bg-[#FF5C49] hover:text-white transition-colors"><Archive size={17} /></button>
+                <button onClick={() => onStageChange("Archived")} title="Archive" className="w-10 h-10 flex items-center justify-center rounded-none text-[#9AA0AD] bg-[#F2F2F2] hover:bg-[#E5322B] hover:text-white transition-colors"><Archive size={17} /></button>
               )}
             </div>
             {saved && <span className="text-[#0F9D6B] text-[13px] font-semibold absolute -top-7 left-6">Saved ✓</span>}
@@ -326,7 +327,7 @@ function Field({ label, value, onChange, disabled, icon: Icon }: { label: string
       <Label>{label}</Label>
       <div className="relative">
         {Icon && <Icon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9AA0AD]" />}
-        <input value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} className={`w-full ${Icon ? "pl-9" : "pl-3.5"} pr-3.5 py-[11px] rounded-xl border border-[#D7D3C7] bg-white text-[#13182B] text-[14px] focus:border-[#2B41E0] outline-none disabled:bg-[#F7F5EF]`} />
+        <input value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} className={`w-full ${Icon ? "pl-9" : "pl-3.5"} pr-3.5 py-[11px] rounded-none border border-[#17222F] bg-white text-[#17222F] text-[14px] focus:border-[#E5322B] outline-none disabled:bg-[#F2F2F2]`} />
       </div>
     </div>
   );
@@ -334,9 +335,9 @@ function Field({ label, value, onChange, disabled, icon: Icon }: { label: string
 
 function Meta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[#F4F2EC] rounded-xl px-3.5 py-2.5">
+    <div className="bg-[#F2F2F2] rounded-none px-3.5 py-2.5">
       <div className="font-mono text-[10.5px] text-[#9AA0AD] uppercase tracking-wider">{label}</div>
-      <div className="text-[13.5px] font-semibold text-[#13182B] mt-0.5 truncate">{value}</div>
+      <div className="text-[13.5px] font-semibold text-[#17222F] mt-0.5 truncate">{value}</div>
     </div>
   );
 }

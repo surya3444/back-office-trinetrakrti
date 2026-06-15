@@ -47,36 +47,36 @@ export default function AuditLog() {
   if (loading) return <Loader label="Loading activity" sub="Reading the audit trail" />;
 
   return (
-    <div className="font-['Poppins',sans-serif]">
+    <div className="font-['Inter',sans-serif]">
       <PageHeader
         icon={History}
         eyebrow="Administration"
-        accent="#6B7283"
+        accent="#5A6473"
         title="Activity Log"
         subtitle="A running record of who changed what across the workspace — leads, follow-ups, members, roles and settings."
-        stats={[{ label: "Events", value: entries.length, accent: "#13182B" }]}
+        stats={[{ label: "Events", value: entries.length, accent: "#17222F" }]}
       />
 
       <div className="relative mb-5 max-w-md animate-fade-up">
         <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9AA0AD]" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search actions or people…" className="w-full pl-10 pr-3 py-3 rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] text-[14.5px] focus:border-[#2B41E0] outline-none" />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search actions or people…" className="w-full pl-10 pr-3 py-3 rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] text-[14.5px] focus:border-[#E5322B] outline-none" />
       </div>
 
-      <div className="bg-white border border-[#D7D3C7] rounded-[20px] shadow-sm overflow-hidden animate-fade-up">
+      <div className="bg-white border border-[#17222F] rounded-none overflow-hidden animate-fade-up">
         {filtered.length === 0 ? (
           <div className="p-6"><EmptyState icon={History} title="No activity" sub="Actions taken in the back office will show up here." /></div>
         ) : (
-          <ul className="divide-y divide-[#E5E2D9]">
+          <ul className="divide-y divide-[#17222F]">
             {filtered.map((e) => (
-              <li key={e.id} className="flex items-start gap-4 px-5 py-3.5 hover:bg-[#FCFBF8] transition-colors">
-                <div className="w-9 h-9 rounded-xl bg-[#F4F2EC] text-[#6B7283] flex items-center justify-center shrink-0 mt-0.5 font-semibold text-[13px]">
+              <li key={e.id} className="flex items-start gap-4 px-5 py-3.5 hover:bg-[#FFFFFF] transition-colors">
+                <div className="w-9 h-9 rounded-none bg-[#F2F2F2] text-[#5A6473] flex items-center justify-center shrink-0 mt-0.5 font-semibold text-[13px]">
                   {(e.actorName || e.actorEmail || "?").charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[14.5px] text-[#13182B]">
+                  <div className="text-[14.5px] text-[#17222F]">
                     <span className="font-semibold">{e.actorName || e.actorEmail || "Someone"}</span>{" "}
-                    <span className="text-[#3A4257]">{e.action.toLowerCase()}</span>
-                    {e.details && <span className="text-[#6B7283]"> — {e.details}</span>}
+                    <span className="text-[#2E3744]">{e.action.toLowerCase()}</span>
+                    {e.details && <span className="text-[#5A6473]"> — {e.details}</span>}
                   </div>
                   <div className="font-mono text-[11.5px] text-[#9AA0AD] mt-0.5">{e.actorEmail}</div>
                 </div>

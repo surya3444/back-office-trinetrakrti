@@ -97,19 +97,19 @@ export default function Projects() {
   if (loading) return <div className="text-[#9AA0AD] animate-pulse font-medium">Loading project board...</div>;
 
   return (
-    <div className="font-['Poppins',sans-serif] h-full flex flex-col relative">
+    <div className="font-['Inter',sans-serif] h-full flex flex-col relative">
       {/* Header Section */}
       <div className="flex justify-between items-end mb-8">
         <div>
-          <div className="font-mono text-[12px] text-[#FF5C49] tracking-[0.16em] uppercase font-medium flex items-center gap-2 mb-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF5C49]"></span>
+          <div className="font-mono text-[12px] text-[#E5322B] tracking-[0.16em] uppercase font-medium flex items-center gap-2 mb-2">
+            <span className="w-1.5 h-1.5 rounded-none bg-[#E5322B]"></span>
             Active Builds
           </div>
-          <h1 className="text-[32px] font-bold text-[#13182B] leading-none tracking-tight">Project Pipeline</h1>
+          <h1 className="text-[32px] font-bold text-[#17222F] leading-none tracking-tight">Project Pipeline</h1>
         </div>
         <button 
           onClick={() => setShowAddModal(true)}
-          className="bg-[#13182B] text-white px-5 py-2.5 rounded-xl font-semibold text-[14.5px] flex items-center gap-2 hover:-translate-y-0.5 transition-transform shadow-[0_10px_20px_-10px_rgba(19,24,43,0.5)]"
+          className="bg-[#17222F] text-white px-5 py-2.5 rounded-none font-semibold text-[14.5px] flex items-center gap-2 hover:-translate-y-0.5 transition-transform"
         >
           <Plus size={18} />
           New Project
@@ -130,35 +130,35 @@ export default function Projects() {
             >
               {/* Column Header */}
               <div className="flex justify-between items-center mb-4 px-1">
-                <h3 className="font-semibold text-[#13182B] text-[16px]">{stage}</h3>
-                <span className="bg-[#E5E2D9] text-[#6B7283] font-mono text-[11px] px-2 py-0.5 rounded-full font-semibold">
+                <h3 className="font-semibold text-[#17222F] text-[16px]">{stage}</h3>
+                <span className="bg-[#17222F] text-[#5A6473] font-mono text-[11px] px-2 py-0.5 rounded-none font-semibold">
                   {columnProjects.length}
                 </span>
               </div>
 
               {/* Column Content */}
-              <div className="bg-[#F4F2EC] border border-[#E5E2D9] rounded-[20px] p-3 flex-1 flex flex-col gap-3 min-h-[500px] transition-colors duration-200">
+              <div className="bg-[#F2F2F2] border border-[#17222F] rounded-none p-3 flex-1 flex flex-col gap-3 min-h-[500px] transition-colors duration-200">
                 {columnProjects.map((project) => (
                   <div 
                     key={project.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, project.id)}
-                    className="bg-[#FFFFFF] border border-[#D7D3C7] rounded-2xl p-5 hover:border-[#FF5C49] transition-colors cursor-grab active:cursor-grabbing group shadow-sm hover:shadow-md"
+                    className="bg-[#FFFFFF] border border-[#17222F] rounded-none p-5 hover:border-[#E5322B] transition-colors cursor-grab active:cursor-grabbing group hover:"
                   >
                     <div className="flex justify-between items-start mb-3">
-                      <span className="bg-[#EDEFFF] text-[#2B41E0] font-mono text-[10px] px-2 py-1 rounded-md uppercase tracking-wider font-semibold truncate max-w-[180px]">
+                      <span className="bg-[#F2F2F2] text-[#E5322B] font-mono text-[10px] px-2 py-1 rounded-none uppercase tracking-wider font-semibold truncate max-w-[180px]">
                         {project.client}
                       </span>
-                      <button className="text-[#9AA0AD] hover:text-[#13182B] transition-colors">
+                      <button className="text-[#9AA0AD] hover:text-[#17222F] transition-colors">
                         <MoreHorizontal size={16} />
                       </button>
                     </div>
                     
-                    <h4 className="font-bold text-[#13182B] text-[17px] leading-tight mb-4">
+                    <h4 className="font-bold text-[#17222F] text-[17px] leading-tight mb-4">
                       {project.title}
                     </h4>
                     
-                    <div className="flex items-center gap-2 text-[#6B7283] font-mono text-[12px] border-t border-[#E5E2D9] pt-3">
+                    <div className="flex items-center gap-2 text-[#5A6473] font-mono text-[12px] border-t border-[#17222F] pt-3">
                       <Calendar size={13} />
                       <span>Due {project.dueDate}</span>
                     </div>
@@ -167,7 +167,7 @@ export default function Projects() {
                 
                 {/* Empty State for Drop Zone */}
                 {columnProjects.length === 0 && (
-                  <div className="flex-1 border-2 border-dashed border-[#D7D3C7] rounded-2xl flex items-center justify-center text-[#9AA0AD] font-mono text-[12px] pointer-events-none">
+                  <div className="flex-1 border-2 border-dashed border-[#17222F] rounded-none flex items-center justify-center text-[#9AA0AD] font-mono text-[12px] pointer-events-none">
                     Drop here
                   </div>
                 )}
@@ -179,17 +179,17 @@ export default function Projects() {
 
       {/* Add Project Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#13182B] bg-opacity-40 backdrop-blur-sm">
-          <div className="bg-[#FFFFFF] w-full max-w-md border border-[#D7D3C7] rounded-[24px] shadow-[0_30px_60px_-20px_rgba(19,24,43,0.3)] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#17222F] bg-opacity-40 backdrop-blur-sm">
+          <div className="bg-[#FFFFFF] w-full max-w-md border border-[#17222F] rounded-none overflow-hidden flex flex-col">
             
-            <div className="px-8 py-6 border-b border-[#E5E2D9] flex justify-between items-center bg-[#FCFBF8]">
+            <div className="px-8 py-6 border-b border-[#17222F] flex justify-between items-center bg-[#FFFFFF]">
               <div>
-                <div className="font-mono text-[11px] text-[#FF5C49] tracking-[0.16em] uppercase font-semibold mb-1">Pipeline</div>
-                <h2 className="text-[22px] font-bold text-[#13182B] leading-none">Add New Project</h2>
+                <div className="font-mono text-[11px] text-[#E5322B] tracking-[0.16em] uppercase font-semibold mb-1">Pipeline</div>
+                <h2 className="text-[22px] font-bold text-[#17222F] leading-none">Add New Project</h2>
               </div>
               <button 
                 onClick={() => setShowAddModal(false)} 
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-[#E5E2D9] text-[#6B7283] hover:bg-[#D7D3C7] transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-none bg-[#17222F] text-[#5A6473] hover:bg-[#17222F] transition-colors"
               >
                 <X size={16} strokeWidth={2.5} />
               </button>
@@ -197,37 +197,37 @@ export default function Projects() {
 
             <form onSubmit={handleAddProject} className="p-8 flex flex-col gap-5">
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Project Title</label>
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Project Title</label>
                 <input
                   type="text"
                   value={newProject.title}
                   onChange={(e) => setNewProject({...newProject, title: e.target.value})}
                   placeholder="e.g. NGO Management App"
-                  className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] text-[15px] focus:outline-none focus:border-[#FF5C49] focus:shadow-[0_0_0_4px_#FFEDE9] transition-all"
+                  className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] text-[15px] focus:outline-none focus:border-[#E5322B] focus: transition-all"
                   required
                 />
               </div>
               
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Client Name</label>
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Client Name</label>
                 <input
                   type="text"
                   value={newProject.client}
                   onChange={(e) => setNewProject({...newProject, client: e.target.value})}
                   placeholder="e.g. Hope Foundation"
-                  className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] text-[15px] focus:outline-none focus:border-[#FF5C49] focus:shadow-[0_0_0_4px_#FFEDE9] transition-all"
+                  className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] text-[15px] focus:outline-none focus:border-[#E5322B] focus: transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block font-mono text-[12px] text-[#6B7283] mb-[7px]">Due Date</label>
+                <label className="block font-mono text-[12px] text-[#5A6473] mb-[7px]">Due Date</label>
                 <input
                   type="text"
                   value={newProject.dueDate}
                   onChange={(e) => setNewProject({...newProject, dueDate: e.target.value})}
                   placeholder="e.g. Q4 2026, or Nov 1st"
-                  className="w-full px-[14px] py-[13px] rounded-xl border border-[#D7D3C7] bg-[#FCFBF8] text-[#13182B] text-[15px] focus:outline-none focus:border-[#FF5C49] focus:shadow-[0_0_0_4px_#FFEDE9] transition-all"
+                  className="w-full px-[14px] py-[13px] rounded-none border border-[#17222F] bg-[#FFFFFF] text-[#17222F] text-[15px] focus:outline-none focus:border-[#E5322B] focus: transition-all"
                 />
               </div>
 
@@ -235,14 +235,14 @@ export default function Projects() {
                 <button 
                   type="button" 
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 bg-[#F4F2EC] text-[#6B7283] font-semibold text-[15px] py-[15px] rounded-xl hover:bg-[#E5E2D9] transition-colors"
+                  className="flex-1 bg-[#F2F2F2] text-[#5A6473] font-semibold text-[15px] py-[15px] rounded-none hover:bg-[#17222F] transition-colors"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 bg-[#13182B] text-white font-semibold text-[15px] py-[15px] rounded-xl shadow-[0_14px_30px_-14px_rgba(19,24,43,0.55)] hover:-translate-y-[2px] transition-transform disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="flex-1 bg-[#17222F] text-white font-semibold text-[15px] py-[15px] rounded-none hover:-translate-y-[2px] transition-transform disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? "Adding..." : "Add Project"}
                 </button>

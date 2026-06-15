@@ -1,8 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --fg: #17222F;
+  --accent: #E5322B;
+  --muted: #F2F2F2;
+}
+
+* { box-sizing: border-box; }
+
 body {
-  background-color: #F4F2EC;
-  color: #13182B;
+  margin: 0;
+  background-color: #FFFFFF;
+  color: #17222F;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Swiss "mono" labels keep a true monospace for a functional, technical feel */
+.font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+::selection { background: #E5322B; color: #fff; }
+
+/* Swiss texture patterns */
+.sw-grid {
+  background-image:
+    linear-gradient(rgba(23,34,47,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23,34,47,.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.sw-dots {
+  background-image: radial-gradient(rgba(23,34,47,.14) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.sw-diagonal {
+  background-image: repeating-linear-gradient(45deg, rgba(23,34,47,.04) 0, rgba(23,34,47,.04) 1px, transparent 1px, transparent 10px);
+}
+
+/* Sharp red focus rings, no glow */
+*:focus-visible {
+  outline: 2px solid #E5322B;
+  outline-offset: 2px;
+}
+
+/* Thin Swiss scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #17222F; }
+::-webkit-scrollbar-track { background: #F2F2F2; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
