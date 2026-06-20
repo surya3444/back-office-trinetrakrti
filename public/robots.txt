@@ -1,0 +1,3 @@
+# Back office is a private admin surface — keep it out of all search indexes (#127).
+User-agent: *
+Disallow: /
